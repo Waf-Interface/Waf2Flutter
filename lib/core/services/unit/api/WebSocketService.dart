@@ -1,10 +1,13 @@
 import 'package:web_socket_channel/web_socket_channel.dart';
+import 'package:msf/core/services/unit/api/HttpService.dart';
 import 'config/Config.dart';
+import 'dart:convert';
 import 'dart:io';
 
 class WebSocketService {
   WebSocketChannel? channel;
   bool _isConnected = false;
+  final HttpService _httpService = HttpService();
 
   bool get isConnected => _isConnected;
 
@@ -16,9 +19,16 @@ class WebSocketService {
     _setUpHttpOverrides();
 
     try {
-      final url = Uri.parse('${Config.websocketAddress}');
+      final token = _httpService.accessToken;
+      if (token == null) {
+        print("No access token available. Cannot connect to WebSocket.");
+        return false;
+      }
+
+      final url = Uri.parse('${Config.websocketAddress}?token=$token');
       print("Connecting to WebSocket: $url");
       channel = WebSocketChannel.connect(url);
+
       channel!.stream.listen(
             (message) {
           onMessageReceived(message);
@@ -35,20 +45,43 @@ class WebSocketService {
       );
 
       _isConnected = true;
+      print("WebSocket connected successfully with token: $token");
       return true;
     } catch (e) {
-      print("Failed to connect: $e");
+      print("Failed to connect to WebSocket: $e");
       _isConnected = false;
       return false;
     }
   }
 
-  void sendMessage(String message) {
+  void sendMessage(String message, {String messageType = 'default'}) {
     if (_isConnected && channel != null) {
-      channel!.sink.add(message);
+      final msg = {
+        'type': messageType,
+        'payload': message,
+      };
+      String encodedMessage = jsonEncode(msg);
+      channel!.sink.add(encodedMessage);
+      print("Sent WebSocket message: $encodedMessage");
     } else {
       print('Cannot send message: WebSocket is not connected.');
     }
+  }
+
+  void requestSystemInfo() {
+    sendMessage("start_system_info", messageType: 'system_info');
+  }
+
+  void requestShowLogs() {
+    sendMessage("show_logs", messageType: 'show_logs');
+  }
+
+  void requestShowAuditLogs() {
+    sendMessage("show_audit_logs", messageType: 'show_audit_logs');
+  }
+
+  void requestNginxLogSummary() {
+    sendMessage("nginx_log_summary", messageType: 'nginx_log_summary');
   }
 
   void closeConnection() {
@@ -56,6 +89,7 @@ class WebSocketService {
     _isConnected = false;
   }
 }
+
 class MyHttpOverrides extends HttpOverrides {
   @override
   HttpClient createHttpClient(SecurityContext? context) {

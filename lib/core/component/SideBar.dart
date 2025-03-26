@@ -238,6 +238,15 @@ class _SideBarState extends State<SideBar> {
                         maxLines: 1,
                         style: TextStyle(color: Theme.of(context).primaryColor),
                       ),
+                    ),   ListTile(
+                      onTap: () => Get.toNamed(AppRouter.NginxLogRoute),
+                      leading: const Icon(Icons.waterfall_chart,
+                          color: Colors.white60),
+                      title: AutoSizeText(
+                        "Nginx Log".tr,
+                        maxLines: 1,
+                        style: TextStyle(color: Theme.of(context).primaryColor),
+                      ),
                     ),
                     ListTile(
                       onTap: () => Get.toNamed(AppRouter.userActionLogRoute),

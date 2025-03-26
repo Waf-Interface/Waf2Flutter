@@ -1,8 +1,8 @@
 import 'package:get/get.dart';
 import 'package:msf/features/doc/doc.dart';
 import 'package:msf/features/home_screen.dart';
-import 'package:msf/features/interface/add_virtualip_screen.dart';
-import 'package:msf/features/interface/manage_virtualip_screen.dart';
+import 'package:msf/features/interface/add_interface_screen.dart';
+import 'package:msf/features/interface/manage_interface_screen.dart';
 import 'package:msf/features/login/otpscreen.dart';
 import 'package:msf/features/login/login_screen.dart';
 import 'package:msf/features/setting_screen.dart';
@@ -14,7 +14,7 @@ import 'package:msf/features/system/routes_screen.dart';
 import 'package:msf/features/system/users/add_user_screen.dart';
 import 'package:msf/features/system/users/user_managment_screen.dart';
 import 'package:msf/features/system_log/internal_errorlog_screen.dart';
-import 'package:msf/features/system_log/nginx_log_screen.dart';
+import 'package:msf/features/system_log/waf_log_screen.dart';
 import 'package:msf/features/system_log/user_actionlog_screen.dart';
 import 'package:msf/features/waf/waf_rule_screen.dart';
 import 'package:msf/features/websites/add_website_screen.dart';
@@ -22,6 +22,7 @@ import 'package:msf/features/websites/edit_webite.dart';
 import 'package:msf/features/websites/website_log.dart';
 import 'package:msf/features/websites/websites_screen.dart';
 
+import '../../features/system_log/ngnix_log_screen.dart';
 import '../../features/waf/waf__manage_screen.dart';
 
 class AppRouter {
@@ -43,6 +44,7 @@ class AppRouter {
   static String addVirtualipRoute = '/add_virtualip';
   static String manageVirtualipRoute = '/manage_virtualip';
   static String WafLogRoute = '/Waf_log';
+  static String NginxLogRoute = '/nginx_log';
   static String userActionLogRoute = '/user_actionlog';
   static String internalErrorLogRoute = '/internal_errorlog';
   static String mediaRoute = '/media';
@@ -70,15 +72,15 @@ class AppRouter {
     GetPage(name: userManagmentRoute, page: () => const UserManagementScreen()),
     GetPage(name: mediaRoute, page: () => const MediaScreen()),
     GetPage(name: addUserManagmentRoute, page: () => const AddUserScreen()),
-    GetPage(name: addVirtualipRoute, page: () => const AddVirtualIPScreen()),
-    GetPage(
-        name: manageVirtualipRoute, page: () => const ManageVirtualIPSCreen()),
+    GetPage(name: addVirtualipRoute, page: () => const AddInterfaceScreen()),
+    GetPage(name: manageVirtualipRoute, page: () => const ManageInterfaceScreen()),
     GetPage(name: systemRoute, page: () => const RoutesScreen()),
     GetPage(name: WafLogRoute, page: () =>  WafLogScreen()),
-    GetPage(name: userActionLogRoute, page: () => const UserActionLogScreen()),
+    GetPage(name: NginxLogRoute, page: () =>  NginxLogScreen()),
+    GetPage(name: userActionLogRoute, page: () =>  UserActionLogScreen()),
     GetPage(
         name: internalErrorLogRoute,
-        page: () => const InternalErrorLogScreen()),
+        page: () =>  InternalErrorLogScreen()),
     GetPage(name: settingRoute, page: () => Settingscreen()),
     GetPage(name: otpRoute, page: () => OtpScreen()),
     GetPage(name: docRoute, page: () => DocScreen()),
