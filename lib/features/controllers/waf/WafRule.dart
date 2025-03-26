@@ -15,7 +15,7 @@ class WafRuleController extends GetxController {
 
   Future<void> fetchWafRules() async {
     isLoading.value = true;
-    var fetchedRules = await fetchRulesStatus();
+    var fetchedRules = await httpService.fetchRulesStatus();
     rules.assignAll(List<Map<String, dynamic>>.from(fetchedRules));
     print(List<Map<String, dynamic>>.from(fetchedRules));
     isLoading.value = false;
@@ -23,7 +23,7 @@ class WafRuleController extends GetxController {
 
   Future<bool> addNewRule(String ruleName, String ruleBody) async {
     isLoading.value = true;
-    bool success = await createNewRule(ruleName, ruleBody);
+    bool success = await httpService.createNewRule(ruleName, ruleBody);
     if (success) {
       await fetchWafRules();
     }
@@ -33,14 +33,14 @@ class WafRuleController extends GetxController {
 
   Future<void> fetchRuleContent(String ruleName) async {
     isLoading.value = true;
-    var content = await getRuleContent(ruleName);
+    var content = await httpService.getRuleContent(ruleName);
     selectedRuleContent.value = content;
     isLoading.value = false;
   }
 
   Future<bool> updateRuleContent(String ruleName, String ruleBody) async {
     isLoading.value = true;
-    bool success = await updateRule(ruleName, ruleBody);
+    bool success = await httpService.updateRule(ruleName, ruleBody);
     isLoading.value = false;
     return success;
   }
@@ -48,7 +48,7 @@ class WafRuleController extends GetxController {
   Future<bool> toggleRule(String ruleName, String currentStatus) async {
     String newStatus = currentStatus == "enabled" ? "disable" : "enable";
     isLoading.value = true;
-    bool success = await toggleRuleStatus(ruleName, newStatus);
+    bool success = await httpService.toggleRuleStatus(ruleName, newStatus);
     if (success) {
       await fetchWafRules();
     }

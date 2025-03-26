@@ -7,63 +7,47 @@ import 'package:msf/core/component/widgets/dashboard_textfield.dart';
 import 'package:msf/core/utills/colorconfig.dart';
 import 'package:msf/features/controllers/settings/MenuController.dart';
 import 'package:msf/core/component/widgets/custom_iconbutton.dart';
-
 import 'package:msf/features/websites/components/data_column_tile.dart';
 import 'package:msf/core/utills/responsive.dart';
+import 'package:msf/features/controllers/system/SystemController.dart';
 
-class RoutesScreen extends StatefulWidget {
+class RoutesScreen extends StatelessWidget {
   const RoutesScreen({super.key});
 
   @override
-  State<RoutesScreen> createState() => _RoutesScreenState();
-}
-
-class _RoutesScreenState extends State<RoutesScreen> {
-  final GlobalKey<ScaffoldState> scaffoldKey = GlobalKey<ScaffoldState>();
-  final Menu_Controller menuController = Get.find<Menu_Controller>();
-  final ScrollController scrollbarController = ScrollController();
-  TextEditingController gatewayTextcontroller = TextEditingController();
-  @override
-  void dispose() {
-    gatewayTextcontroller.dispose();
-    super.dispose();
-  }
-
-  final List<String> ipList = [
-    "192.168.1.1 - Available",
-  ];
-  final List<String> interfaces = [
-    "ens-33",
-  ];
-  @override
   Widget build(BuildContext context) {
+    final Menu_Controller menuController = Get.find<Menu_Controller>();
+    final SystemController systemController = Get.find<SystemController>();
+    final TextEditingController gatewayTextcontroller = TextEditingController();
+
+    systemController.onInit();
     return PageBuilder(
       sectionWidgets: [
         Responsive(
           mobile: Column(
             mainAxisAlignment: MainAxisAlignment.start,
             children: [
-              configGateway,
+              configGateway(systemController, gatewayTextcontroller),
               const SizedBox(width: 10, height: 10),
-              routesSection
+              routesSection(systemController),
             ],
           ),
           tablet: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.start,
             children: [
-              Expanded(flex: 2, child: configGateway),
+              Expanded(flex: 2, child: configGateway(systemController, gatewayTextcontroller)),
               const SizedBox(width: 10, height: 10),
-              Expanded(flex: 3, child: routesSection),
+              Expanded(flex: 3, child: routesSection(systemController)),
             ],
           ),
           desktop: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.start,
             children: [
-              Expanded(flex: 2, child: configGateway),
+              Expanded(flex: 2, child: configGateway(systemController, gatewayTextcontroller)),
               const SizedBox(width: 10, height: 10),
-              Expanded(flex: 3, child: routesSection),
+              Expanded(flex: 3, child: routesSection(systemController)),
             ],
           ),
         ),
@@ -71,11 +55,11 @@ class _RoutesScreenState extends State<RoutesScreen> {
     );
   }
 
-  Widget get configGateway {
+  Widget configGateway(SystemController systemController, TextEditingController gatewayTextcontroller) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.onSecondary,
+        color: Get.context!.theme.colorScheme.onSecondary,
         borderRadius: BorderRadius.circular(10),
       ),
       child: Column(
@@ -92,12 +76,17 @@ class _RoutesScreenState extends State<RoutesScreen> {
                 "IP Virtual:",
                 maxLines: 1,
               ),
-              SizedBox(width: 10),
-              CustomDropdownWidget(
-                list: ipList,
-                value: ipList[0],
-                onchangeValue: (value) {},
-              ),
+              const SizedBox(width: 10),
+              Obx(() {
+                final ipList = systemController.networkInterfaces
+                    .map((iface) => "${iface['address']} - Available")
+                    .toList();
+                return CustomDropdownWidget(
+                  list: ipList.isNotEmpty ? ipList : ["No IPs available"],
+                  value: ipList.isNotEmpty ? ipList[0] : "No IPs available",
+                  onchangeValue: (value) {},
+                );
+              }),
             ],
           ),
           const SizedBox(height: 15),
@@ -119,73 +108,86 @@ class _RoutesScreenState extends State<RoutesScreen> {
                 "Interface:",
                 maxLines: 1,
               ),
-              SizedBox(width: 10),
-              CustomDropdownWidget(
-                list: interfaces,
-                value: interfaces[0],
-                onchangeValue: (value) {},
-              )
+              const SizedBox(width: 10),
+              Obx(() {
+                final interfaceList = systemController.networkInterfaces
+                    .map((iface) => iface['name'].toString())
+                    .toList();
+                return CustomDropdownWidget(
+                  list: interfaceList.isNotEmpty ? interfaceList : ["No interfaces"],
+                  value: interfaceList.isNotEmpty ? interfaceList[0] : "No interfaces",
+                  onchangeValue: (value) {},
+                );
+              }),
             ],
           ),
           const SizedBox(height: 15),
           SizedBox(
             height: 30,
             width: 100,
-            child: CustomIconbuttonWidget(
+            child: Obx(() => CustomIconbuttonWidget(
               backColor: primaryColor,
-              onPressed: () {},
-              title: "Add",
-            ),
-          )
+              onPressed: () {
+                if (!systemController.isLoading.value) {
+                  systemController.createGateway(gatewayTextcontroller.text);
+                }
+              },
+              title: systemController.isLoading.value ? "Adding..." : "Add",
+            )),
+          ),
         ],
       ),
     );
   }
 
-  Widget get routesSection => Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.onSecondary,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: SizedBox(
-          width: double.infinity,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 15),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const AutoSizeText(
-                  "Routes",
-                  maxLines: 1,
+  Widget routesSection(SystemController systemController) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Get.context!.theme.colorScheme.onSecondary,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: SizedBox(
+        width: double.infinity,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 15),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const AutoSizeText(
+                "Routes",
+                maxLines: 1,
+              ),
+              const SizedBox(height: 10),
+              Obx(() => systemController.isLoading.value
+                  ? const Center(child: CircularProgressIndicator())
+                  : DataTable(
+                columnSpacing: 30,
+                border: TableBorder.all(
+                  color: Colors.white,
+                  width: 0.07,
                 ),
-                const SizedBox(height: 10),
-                DataTable(
-                  columnSpacing: 30,
-                  border: TableBorder.all(
-                    color: Colors.white,
-                    width: 0.07,
-                  ),
-                  columns: [
-                    DataColumnTile.buildRow(title: 'Destination'),
-                    DataColumnTile.buildRow(title: 'Gateway'),
-                    DataColumnTile.buildRow(title: 'Genmask'),
-                    DataColumnTile.buildRow(title: 'iface'),
-                  ],
-                  rows: [
-                    DataRow(
-                      cells: [
-                        DataCell(Text('0.0.0.0')),
-                        DataCell(Text('192.168.70.1')),
-                        DataCell(Text('0.0.0.0')),
-                        DataCell(Text("ens33")),
-                      ],
-                    ),
-                  ],
-                ),
-              ],
-            ),
+                columns: [
+                  DataColumnTile.buildRow(title: 'Destination'),
+                  DataColumnTile.buildRow(title: 'Gateway'),
+                  DataColumnTile.buildRow(title: 'Genmask'),
+                  DataColumnTile.buildRow(title: 'iface'),
+                ],
+                rows: systemController.networkRoutes.map((route) {
+                  return DataRow(
+                    cells: [
+                      DataCell(Text(route['destination'] ?? 'N/A')),
+                      DataCell(Text(route['gateway'] ?? 'N/A')),
+                      DataCell(Text(route['genmask'] ?? 'N/A')),
+                      DataCell(Text(route['iface'] ?? 'N/A')),
+                    ],
+                  );
+                }).toList(),
+              )),
+            ],
           ),
         ),
-      );
+      ),
+    );
+  }
 }

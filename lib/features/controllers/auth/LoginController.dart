@@ -3,7 +3,6 @@ import 'package:get/get.dart';
 import 'package:msf/features/home_screen.dart';
 import 'package:msf/core/services/unit/api/HttpService.dart';
 import 'package:msf/core/services/unit/api/WebSocketService.dart';
-import 'package:msf/core/services/unit/com.dart';
 
 class LoginController extends GetxController {
   var loginProcess = false.obs;
@@ -13,10 +12,8 @@ class LoginController extends GetxController {
   String username = "";
   String password = "";
 
-  final Com api = Com(
-    httpService: HttpService(),
-    webSocketService: WebSocketService(),
-  );
+    HttpService httpService =  HttpService();
+    WebSocketService webSocketService = WebSocketService();
 
   Future<void> login(String username, String password) async {
     this.username = username;
@@ -49,9 +46,9 @@ class LoginController extends GetxController {
     }
 
     loginProcess.value = true;
-    await api.login(username, password);
+    await httpService.login(username, password);
 
-    if (api.httpService.sessionId != null) {
+    if (httpService.sessionId != null) {
       otpRequired.value = true;
       Get.snackbar(
         "",
@@ -107,7 +104,7 @@ class LoginController extends GetxController {
   Future<void> verifyOtp(int otp) async {
     loginProcess.value = true;
 
-    final otpSuccess = await api.verifyOtp(otp);
+    final otpSuccess = await httpService.verifyOtp(otp);
 
     if (otpSuccess) {
       loginSuccess.value = true;

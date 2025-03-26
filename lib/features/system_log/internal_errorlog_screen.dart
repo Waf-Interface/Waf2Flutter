@@ -1,68 +1,121 @@
 import 'package:flutter/material.dart';
-
+import 'package:get/get.dart';
 import 'package:msf/core/component/page_builder.dart';
 import 'package:msf/core/component/widgets/custom_dropdown.dart';
-
+import 'package:msf/core/component/widgets/custom_iconbutton.dart';
 import 'package:msf/core/component/widgets/dashboard_textfield.dart';
+import 'package:msf/core/utills/colorconfig.dart';
+import 'package:msf/features/controllers/log/LogContorller.dart';
 
-class InternalErrorLogScreen extends StatefulWidget {
-  const InternalErrorLogScreen({super.key});
+class InternalErrorLogScreen extends StatelessWidget {
+  final LogController controller = Get.find<LogController>();
+  final TextEditingController searchController = TextEditingController();
 
-  @override
-  State<InternalErrorLogScreen> createState() => _InternalErrorLogScreenState();
-}
+  Color getLogColor(String? level) {
+    switch (level?.toLowerCase()) {
+      case 'error':
+        return Colors.redAccent;
+      case 'info':
+        return Colors.grey;
+      default:
+        return Colors.blueGrey;
+    }
+  }
+  void showFilterDialog(BuildContext context) {
+    List<String> logLevels = controller.filteredAppLogs
+        .map((log) => log['level'].toString().toUpperCase().trim())
+        .toSet()
+        .toList();
 
-class _InternalErrorLogScreenState extends State<InternalErrorLogScreen> {
-  final ScrollController scrollbarController = ScrollController();
+    logLevels.sort();
+    logLevels.insert(0, "All");
 
-  // Sample Data
-  final List<Map<String, dynamic>> _data = List.generate(
-    1,
-    (index) => {
-      "dateTime": DateTime.now().subtract(Duration(minutes: index * 15)),
-      "username": "user_${index + 1}",
-      "description": "Performed action ${index + 1}.",
-    },
-  );
+    Get.defaultDialog(
+      title: "Select Filter",
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Obx(
+                () {
+              if (!logLevels.contains(controller.filterType.value)) {
+                controller.filterType.value = logLevels.first;
+              }
 
-  // Sorting Configuration
-  int? _sortColumnIndex;
-  bool _isAscending = true;
+              return DropdownButton<String>(
+                value: controller.filterType.value,
+                onChanged: (String? newValue) {
+                  if (newValue != null) {
+                    controller.filterType.value = newValue;
+                  }
+                },
+                items: logLevels.map((filter) {
+                  return DropdownMenuItem(
+                    value: filter,
+                    child: Text(filter),
+                  );
+                }).toList(),
+              );
+            },
+          ),
 
-  // Dropdown & Search Logic
-  int selectedEntries = 10;
-  List<int> entryOptions = [10, 25, 50, 100];
-  TextEditingController searchTextController = TextEditingController();
-
-  @override
-  void dispose() {
-    searchTextController.dispose();
-    super.dispose();
+          const SizedBox(height: 10),
+          ElevatedButton(
+            onPressed: () {
+              controller.applyAppLogFilter(searchController.text);
+              Get.back(); // Close the dialog
+            },
+            child: const Text("Apply"),
+          ),
+        ],
+      ),
+    );
   }
 
-  void _sortData(int columnIndex, bool ascending) {
-    setState(() {
-      _sortColumnIndex = columnIndex;
-      _isAscending = ascending;
 
-      switch (columnIndex) {
-        case 0: // Sort by DateTime
-          _data.sort((a, b) => ascending
-              ? a["dateTime"].compareTo(b["dateTime"])
-              : b["dateTime"].compareTo(a["dateTime"]));
-          break;
-        case 1: // Sort by Username
-          _data.sort((a, b) => ascending
-              ? a["username"].compareTo(b["username"])
-              : b["username"].compareTo(a["username"]));
-          break;
-        case 2: // Sort by Description
-          _data.sort((a, b) => ascending
-              ? a["description"].compareTo(b["description"])
-              : b["description"].compareTo(a["description"]));
-          break;
-      }
-    });
+  Widget buildLogLevelBadge(String? level) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: getLogColor(level).withOpacity(0.2),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: getLogColor(level), width: 1.5),
+      ),
+      child: Text(
+        level?.toUpperCase() ?? 'N/A',
+        style: TextStyle(
+          fontWeight: FontWeight.bold,
+          color: getLogColor(level),
+        ),
+      ),
+    );
+  }
+
+  void showLogDetails(BuildContext context, Map<String, dynamic> log) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Log Details"),
+          content: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text("Timestamp: ${log['timestamp'] ?? 'N/A'}"),
+              const SizedBox(height: 8),
+              buildLogLevelBadge(log['level']),
+              const SizedBox(height: 8),
+              Text("Message: ${log['message'] ?? 'N/A'}"),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text("Close"),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -79,106 +132,109 @@ class _InternalErrorLogScreenState extends State<InternalErrorLogScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Expanded(
-                    child: Row(
-                      children: [
-                        const Text("Show"),
-                        const SizedBox(width: 5),
-                        Flexible(
-                            child: CustomDropdownWidget(
-                          list: entryOptions,
-                          value: selectedEntries,
-                          onchangeValue: (newVal) {
-                            setState(() {
-                              selectedEntries = newVal;
-                            });
-                          },
-                        )),
-                        const SizedBox(width: 5),
-                        const Text("entries"),
-                      ],
-                    ),
-                  ),
-                  Row(
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text("Search"),
-                      const SizedBox(width: 5),
-                      SizedBox(
-                        width: 150,
-                        child: DashboardTextfield(
-                          textEditingController: searchTextController,
-                        ),
-                      ),
+                      const Text("Internal Error Logs"),
+                      Obx(() => Text("Showing last ${controller.filteredAppLogs.length} logs")),
                     ],
+                  ),
+                  CustomIconbuttonWidget(
+                    backColor: primaryColor,
+                    onPressed: () => controller.downloadLogs(controller.filteredAppLogs),
+                    title: "Download Full Log",
+                    icon: Icons.download,
                   ),
                 ],
               ),
               const SizedBox(height: 20),
-
-              // DataTable with Logs
-              Scrollbar(
-                controller: scrollbarController,
-                thumbVisibility: true,
-                child: SingleChildScrollView(
-                  controller: scrollbarController,
-                  scrollDirection: Axis.horizontal,
-                  child: DataTable(
-                    sortColumnIndex: _sortColumnIndex,
-                    sortAscending: _isAscending,
-                    columns: [
-                      DataColumn(
-                        label: const SizedBox(
-                          width: 150,
-                          child: Text("Date & Time"),
-                        ),
-                        onSort: (columnIndex, ascending) {
-                          _sortData(columnIndex, ascending);
-                        },
-                      ),
-                      DataColumn(
-                        label: const SizedBox(
-                          width: 50,
-                          child: Text("Username"),
-                        ),
-                        onSort: (columnIndex, ascending) {
-                          _sortData(columnIndex, ascending);
-                        },
-                      ),
-                      DataColumn(
-                        label: const Expanded(
-                            child: Text(
-                          "Description",
-                        )),
-                        onSort: (columnIndex, ascending) {
-                          _sortData(columnIndex, ascending);
-                        },
-                      ),
-                    ],
-                    rows: _data.map((row) {
-                      return DataRow(cells: [
-                        DataCell(Text(
-                          row["dateTime"].toString().split('.')[0],
-                        )),
-                        DataCell(Text(row["username"])),
-                        DataCell(Text(
-                          row["description"],
-                        )),
-                      ]);
-                    }).toList(),
+              Row(
+                children: [
+                  const Text("Show"),
+                  const SizedBox(width: 5),
+                  Obx(
+                        () => CustomDropdownWidget(
+                      list: [5, 10, 25, 50, 100],
+                      value: controller.selectedEntries.value,
+                      onchangeValue: (newVal) {
+                        int value = int.tryParse(newVal.toString()) ?? 10;
+                        controller.selectedEntries.value = value;
+                        controller.applyAppLogFilter(searchController.text);
+                      },
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: SizedBox(
+                      width: 200,
+                      child: DashboardTextfield(
+                        textEditingController: searchController,
+                        onChanged: (val) {
+                          controller.applyAppLogFilter(val);
+                        },
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  ElevatedButton(
+                    onPressed: () {
+                      showFilterDialog(context);
+                    },
+                    child: const Text("Filter", style: TextStyle(color: Colors.white)),
+                  ),
+
+
+                  const SizedBox(width: 10),
+                  IconButton(
+                    icon: const Icon(Icons.refresh),
+                    onPressed: controller.refreshLogs,
+                  ),
+                ],
               ),
               const SizedBox(height: 20),
-
-              // Footer
-              Text(
-                "Showing ${_data.isNotEmpty ? 1 : 0} to ${_data.length} of ${_data.length} entries",
-                textAlign: TextAlign.right,
-                style: TextStyle(
-                  color: Theme.of(context).textTheme.bodySmall!.color,
-                ),
-              ),
+              Obx(() {
+                if (controller.isLoading.value) {
+                  return const Center(child: CircularProgressIndicator());
+                } else {
+                  return DataTable(
+                    columns: const [
+                      DataColumn(label: Text("#")),
+                      DataColumn(label: Text("Timestamp")),
+                      DataColumn(label: Text("Level")),
+                      DataColumn(label: Text("Message")),
+                    ],
+                    rows: List<DataRow>.generate(
+                      controller.filteredAppLogs.reversed.length, // Newest logs on top
+                          (index) {
+                        final log = controller.filteredAppLogs.reversed.toList()[index];
+                        return DataRow(
+                          onSelectChanged: (selected) {
+                            if (selected ?? false) {
+                              showLogDetails(context, log);
+                            }
+                          },
+                          cells: [
+                            DataCell(Text((index + 1).toString())),
+                            DataCell(Text(log["timestamp"] ?? 'N/A')),
+                            DataCell(buildLogLevelBadge(log["level"])),
+                            DataCell(
+                              SizedBox(
+                                width: 200,
+                                child: Text(
+                                  log["message"] ?? 'No Message',
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  );
+                }
+              })
             ],
           ),
         ),

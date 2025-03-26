@@ -27,7 +27,7 @@ class IdleController extends GetxController {
 
   void onUserInteraction() {
     _idleTimer?.cancel();
-    _idleTimer = Timer.periodic(const Duration(seconds: 300), (timer) {
+    _idleTimer = Timer.periodic(const Duration(minutes: 45), (timer) {
       _showIdleSnackbar();
     });
   }
@@ -35,7 +35,7 @@ class IdleController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    _idleTimer = Timer.periodic(const Duration(seconds: 300), (timer) {
+    _idleTimer = Timer.periodic(const Duration(minutes: 45), (timer) {
       _showIdleSnackbar();
     });
   }

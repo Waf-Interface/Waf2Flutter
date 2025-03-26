@@ -3,16 +3,16 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:msf/core/component/page_builder.dart';
 import 'package:msf/core/services/unit/api/HttpService.dart';
-import 'package:msf/features/controllers/settings/IdleController.dart';
 import 'package:msf/features/controllers/settings/MenuController.dart';
-import 'package:msf/core/component/Header.dart';
-import 'package:msf/core/component/SideBar.dart';
+import 'package:msf/features/controllers/waf/WafSetup.dart';
 import 'package:msf/core/component/widgets/custom_iconbutton.dart';
 import 'package:msf/features/dashboard/component/CircleChar.dart';
-
-import 'package:msf/features/websites/components/data_column_tile.dart';
-import 'package:msf/features/websites/components/data_row_tile.dart';
+import 'package:msf/features/dashboard/component/RequestsBars.dart';
+import 'package:msf/features/waf/components/RadarChart.dart';
+import 'package:msf/features/waf/components/WafConfig.dart';
+import 'package:msf/features/waf/components/rulePlace.dart';
 import 'package:msf/core/utills/responsive.dart';
+import 'components/SetSecRule.dart';
 
 class WafManagerScreen extends StatefulWidget {
   const WafManagerScreen({super.key});
@@ -22,9 +22,17 @@ class WafManagerScreen extends StatefulWidget {
 }
 
 class _ManageWafScreenState extends State<WafManagerScreen> {
-  final GlobalKey<ScaffoldState> scaffoldKey = GlobalKey<ScaffoldState>();
   final Menu_Controller menuController = Get.find<Menu_Controller>();
   final ScrollController scrollbarController = ScrollController();
+  HttpService httpService = HttpService();
+
+  @override
+  void initState() {
+    super.initState();
+    final wafSetupController = WafSetupController();
+    wafSetupController.setHttpService(httpService);
+    Get.put(wafSetupController);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,37 +40,102 @@ class _ManageWafScreenState extends State<WafManagerScreen> {
       sectionWidgets: [
         Responsive(
           mobile: Column(
-            mainAxisAlignment: MainAxisAlignment.start,
             children: [
               WafActions,
-              const SizedBox(width: 10, height: 10),
-              pendingAppSection
+              const SizedBox(height: 10),
+              RequestsBars(),
+              const SizedBox(height: 10),
+              SetSecRule(),
+              const SizedBox(height: 10),
+               WafConfigWidget(),
+              const SizedBox(height: 10),
+              RulePlace(),
+              const SizedBox(height: 10),
+              RadarChartWidget(),
             ],
           ),
-          tablet: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.start,
+          tablet: Column(
             children: [
-              Expanded(flex: 2, child: WafActions),
-              const SizedBox(width: 10, height: 10),
-              Expanded(flex: 3, child: pendingAppSection),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(flex: 2, child: WafActions),
+                  const SizedBox(width: 10),
+                  Expanded(flex: 3, child: RequestsBars()),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: Column(
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(flex: 3, child: SetSecRule()),
+                            const SizedBox(width: 10),
+                            Expanded(flex: 2, child:  WafConfigWidget()),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        RulePlace(),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(flex: 2, child: RadarChartWidget()),
+                ],
+              ),
             ],
           ),
-          desktop: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.start,
+          desktop: Column(
             children: [
-              Expanded(flex: 2, child: WafActions),
-              const SizedBox(width: 10, height: 10),
-              Expanded(flex: 3, child: pendingAppSection),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(flex: 2, child: WafActions),
+                  const SizedBox(width: 10),
+                  Expanded(flex: 3, child: RequestsBars()),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: Column(
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(flex: 2, child: SetSecRule()),
+                            const SizedBox(width: 10),
+                            Expanded(flex: 1, child:  WafConfigWidget()),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        RulePlace(),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(flex: 1, child: RadarChartWidget()),
+                ],
+              ),
             ],
           ),
         ),
       ],
     );
   }
+
   Widget get WafActions {
     return Container(
+      height: 350,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.onSecondary,
@@ -76,9 +149,8 @@ class _ManageWafScreenState extends State<WafManagerScreen> {
             maxLines: 1,
           ),
           const SizedBox(height: 15),
-          // Circular chart showing WAF status via a FutureBuilder
           FutureBuilder<bool>(
-            future: checkModSecurityStatus(),
+            future: httpService.checkModSecurityStatus(),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return CircleChart(
@@ -108,7 +180,6 @@ class _ManageWafScreenState extends State<WafManagerScreen> {
                   );
                 }
               }
-              // Fallback
               return CircleChart(
                 circleColor: Colors.grey[500]!,
                 mainText: "Loading",
@@ -116,7 +187,7 @@ class _ManageWafScreenState extends State<WafManagerScreen> {
               );
             },
           ),
-          const SizedBox(height: 15),
+          const SizedBox(height: 40),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             decoration: BoxDecoration(
@@ -136,7 +207,7 @@ class _ManageWafScreenState extends State<WafManagerScreen> {
                   title: "Check Confg",
                   icon: Icons.check,
                   onPressed: () async {
-                    bool status = await checkModSecurityStatus();
+                    bool status = await httpService.checkModSecurityStatus();
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(status ? "WAF is ON!" : "WAF is OFF!"),
@@ -152,7 +223,7 @@ class _ManageWafScreenState extends State<WafManagerScreen> {
                   title: "Start Engine",
                   icon: Icons.play_arrow,
                   onPressed: () async {
-                    bool result = await toggleModSecurity("on");
+                    bool result = await httpService.toggleModSecurity("on");
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(result
@@ -170,7 +241,7 @@ class _ManageWafScreenState extends State<WafManagerScreen> {
                   title: "Stop Engine",
                   icon: Icons.stop,
                   onPressed: () async {
-                    bool result = await toggleModSecurity("off");
+                    bool result = await httpService.toggleModSecurity("off");
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(result
@@ -188,76 +259,4 @@ class _ManageWafScreenState extends State<WafManagerScreen> {
       ),
     );
   }
-
-  Widget get pendingAppSection => Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.onSecondary,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: SizedBox(
-          width: double.infinity,
-          child: Scrollbar(
-            controller: scrollbarController,
-            thumbVisibility: true,
-            child: SingleChildScrollView(
-              controller: scrollbarController,
-              scrollDirection: Axis.horizontal,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 15),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const AutoSizeText(
-                      "Waf Pending to preview",
-                      maxLines: 1,
-                    ),
-                    const SizedBox(height: 10),
-                    DataTable(
-                      columnSpacing: 30,
-                      border: TableBorder.all(
-                        color: Colors.white,
-                        width: 0.07,
-                      ),
-                      columns: [
-                        DataColumnTile.buildRow(title: 'Name'),
-                        DataColumnTile.buildRow(title: 'Application Url'),
-                        DataColumnTile.buildRow(title: 'Status'),
-                        DataColumnTile.buildRow(title: 'Author'),
-                        DataColumnTile.buildRow(title: 'Actions'),
-                      ],
-                      rows: [
-                        DataRowTile.addWebsiteRow(
-                          name: 'climber',
-                          applicationUrl: 'www.climbersoul.cl',
-                          status: "Ready to deploy",
-                          author: "admin",
-                          onTapDelete: () {},
-                          onTapDeploy: () {},
-                        ),
-                        DataRowTile.addWebsiteRow(
-                          name: 'climber',
-                          applicationUrl: 'www.climbersoul.cl',
-                          status: "Ready to deploy",
-                          author: "admin",
-                          onTapDelete: () {},
-                          onTapDeploy: () {},
-                        ),
-                        DataRowTile.addWebsiteRow(
-                          name: 'climber',
-                          applicationUrl: 'www.climbersoul.cl',
-                          status: "Ready to deploy",
-                          author: "admin",
-                          onTapDelete: () {},
-                          onTapDeploy: () {},
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
 }

@@ -5,59 +5,20 @@ import 'package:msf/core/router/app_router.dart';
 import 'package:msf/core/utills/colorconfig.dart';
 import 'package:msf/features/controllers/settings/MenuController.dart';
 import 'package:msf/core/component/widgets/custom_iconbutton.dart';
+import 'package:msf/features/controllers/user/UserController.dart';
+import 'package:msf/features/system/users/edit_user_screen.dart';
 
-
-class UserManagementScreen extends StatefulWidget {
+class UserManagementScreen extends StatelessWidget {
   const UserManagementScreen({super.key});
 
   @override
-  State<UserManagementScreen> createState() => _UserManagementScreenState();
-}
-
-class _UserManagementScreenState extends State<UserManagementScreen> {
-  final GlobalKey<ScaffoldState> scaffoldKey = GlobalKey<ScaffoldState>();
-  final Menu_Controller menuController = Get.find<Menu_Controller>();
-  final ScrollController scrollbarController = ScrollController();
-  TextEditingController gatewayTextcontroller = TextEditingController();
-  @override
-  void dispose() {
-    gatewayTextcontroller.dispose();
-    super.dispose();
-  }
-
-  final List<String> ipList = [
-    "192.168.1.1 - Available",
-  ];
-  final List<String> interfaces = [
-    "ens-33",
-  ];
-  int? _sortColumnIndex;
-  bool _isAscending = true;
-  final List<Map<String, dynamic>> _data = List.generate(
-    5,
-    (index) => {
-      "id": index + 1,
-      "Firstname": "User $index",
-      "Lastname": "Lastname $index",
-      "Email": "user$index@example.com",
-      "Username": "user_$index",
-    },
-  );
-  void _sortData(int columnIndex, bool ascending) {
-    setState(() {
-      _sortColumnIndex = columnIndex;
-      _isAscending = ascending;
-
-      if (columnIndex == 0) {
-        _data.sort((a, b) => ascending
-            ? a["id"].compareTo(b["id"])
-            : b["id"].compareTo(a["id"]));
-      }
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
+    final Menu_Controller menuController = Get.find<Menu_Controller>();
+    final UserController userController = Get.find<UserController>();
+    final ScrollController scrollbarController = ScrollController();
+
+    userController.onInit();
+
     return PageBuilder(
       sectionWidgets: [
         Row(
@@ -68,7 +29,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
               backColor: primaryColor,
               onPressed: () => Get.toNamed(AppRouter.addUserManagmentRoute),
               title: "Add User",
-            )
+            ),
           ],
         ),
         const SizedBox(height: 16),
@@ -82,73 +43,62 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
             child: SingleChildScrollView(
               controller: scrollbarController,
               scrollDirection: Axis.horizontal,
-              child: DataTable(
+              child: Obx(() => userController.isLoading.value
+                  ? const Center(child: CircularProgressIndicator())
+                  : DataTable(
                 columnSpacing: 20.0,
-                sortColumnIndex: _sortColumnIndex,
-                sortAscending: _isAscending,
-                columns: [
+                columns: const [
                   DataColumn(
                     label: SizedBox(
                       width: 25,
-                      child: Text(
-                        "ID",
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                      child: Text("ID", overflow: TextOverflow.ellipsis),
                     ),
-                    onSort: (columnIndex, ascending) {
-                      _sortData(columnIndex, ascending);
-                    },
                   ),
                   DataColumn(
                     label: SizedBox(
                       width: 100,
-                      child: Text(
-                        "First Name",
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                      child: Text("First Name", overflow: TextOverflow.ellipsis),
                     ),
                   ),
                   DataColumn(
                     label: SizedBox(
                       width: 150,
-                      child: Text(
-                        "Last Name",
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                      child: Text("Last Name", overflow: TextOverflow.ellipsis),
                     ),
                   ),
                   DataColumn(
                     label: SizedBox(
                       width: 250,
-                      child: Text(
-                        "E-Mail",
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                      child: Text("E-Mail", overflow: TextOverflow.ellipsis),
                     ),
                   ),
                   DataColumn(
                     label: SizedBox(
                       width: 150,
-                      child: Text(
-                        "Username",
-                        overflow: TextOverflow.ellipsis,
+                      child: Text("Username", overflow: TextOverflow.ellipsis),
+                    ),
+                  ),
+                  DataColumn(
+                    label: Tooltip(
+                      message:
+                      "You cannot create a user via root rule directly from the frontend. Please use the CLI tool on the server side. Thanks!",
+                      child: SizedBox(
+                        width: 100,
+                        child: Text("Rule", overflow: TextOverflow.ellipsis),
                       ),
                     ),
                   ),
-                  const DataColumn(label: SizedBox()), // Actions
+                  DataColumn(label: SizedBox()),
                 ],
-                rows: _data.map((row) {
+                rows: userController.users.map((row) {
                   return DataRow(
                     cells: [
-                      DataCell(Text(row["id"].toString())),
-                      DataCell(Text(row["Firstname"],
-                          overflow: TextOverflow.ellipsis)),
-                      DataCell(Text(row["Lastname"],
-                          overflow: TextOverflow.ellipsis)),
-                      DataCell(
-                          Text(row["Email"], overflow: TextOverflow.ellipsis)),
-                      DataCell(Text(row["Username"],
-                          overflow: TextOverflow.ellipsis)),
+                      DataCell(Text(row["id"]?.toString() ?? 'N/A')),
+                      DataCell(Text(row["first_name"] ?? 'N/A', overflow: TextOverflow.ellipsis)),
+                      DataCell(Text(row["last_name"] ?? 'N/A', overflow: TextOverflow.ellipsis)),
+                      DataCell(Text(row["email"] ?? 'N/A', overflow: TextOverflow.ellipsis)),
+                      DataCell(Text(row["username"] ?? 'N/A', overflow: TextOverflow.ellipsis)),
+                      DataCell(Text(row["rule"] ?? 'N/A', overflow: TextOverflow.ellipsis)),
                       DataCell(
                         SizedBox(
                           width: 200,
@@ -163,14 +113,16 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                               const SizedBox(width: 5),
                               CustomIconbuttonWidget(
                                 backColor: Colors.white10,
-                                onPressed: () {},
+                                onPressed: () {
+                                  Get.to(() => EditUserScreen(user: row));
+                                  },
                                 icon: Icons.edit,
                                 title: "Edit",
                               ),
                               const SizedBox(width: 5),
                               CustomIconbuttonWidget(
                                 backColor: Colors.white10,
-                                onPressed: () {},
+                                onPressed: () => userController.deleteUser(row["id"]),
                                 icon: Icons.delete,
                                 title: "Delete",
                               ),
@@ -181,7 +133,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                     ],
                   );
                 }).toList(),
-              ),
+              )),
             ),
           ),
         ),

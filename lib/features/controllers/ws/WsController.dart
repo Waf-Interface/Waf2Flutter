@@ -4,19 +4,20 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:msf/features/controllers/auth/LoginController.dart';
 import 'package:msf/core/services/unit/api/WebSocketService.dart';
-import 'package:msf/core/services/unit/com.dart';
-import '../../../core/services/unit/api/HttpService.dart';
+import 'package:msf/core/services/unit/api/HttpService.dart';
 import '../dashboard/ResourceUsageController.dart';
 
 class WsController extends GetxController {
-  final Com api = Com(
-    httpService: HttpService(),
-    webSocketService: WebSocketService(),
-  );
+  final HttpService httpService = HttpService();
+  final WebSocketService webSocketService = WebSocketService();
 
   var isLoading = true.obs;
   var isConnected = false.obs;
   Timer? _statusCheckTimer;
+
+  var logs = <String>[].obs;
+  var auditLogs = <String>[].obs;
+  var nginxLogSummary = {}.obs;
 
   @override
   void onInit() {
@@ -25,7 +26,7 @@ class WsController extends GetxController {
       if (isSuccess) {
         connectWebSocket();
         _startPeriodicStatusCheck();
-        print("--------------------------its started");
+        print("--------------------------WebSocket connection started");
       }
     });
   }
@@ -33,22 +34,22 @@ class WsController extends GetxController {
   Future<void> connectWebSocket() async {
     isLoading.value = true;
     print("Attempting to connect WebSocket...");
-    bool connected = await api.wsConnect(processIncomingData);
+    bool connected = await webSocketService.wsConnect(processIncomingData);
 
     isConnected.value = connected;
     isLoading.value = false;
 
     if (connected) {
       print("WebSocket connected successfully.");
-      sendMessage("start_system_info", messageType: 'system_info');
+      webSocketService.requestSystemInfo();
     } else {
       showDisconnectedDialog();
-      print("Failed to connect to WebSocket.");
+      print("Failed to connect to WebSocket. Check token or server availability.");
     }
   }
 
   void processIncomingData(String message) {
-   // print("WebSocket received data: $message");
+    //print("WebSocket received data: $message");
     try {
       Map<String, dynamic> data = jsonDecode(message);
       String messageType = data['type'];
@@ -57,6 +58,15 @@ class WsController extends GetxController {
       switch (messageType) {
         case 'system_info':
           _updateResourceUsage(payload);
+          break;
+        case 'show_logs':
+          _handleShowLogs(payload);
+          break;
+        case 'show_audit_logs':
+          _handleShowAuditLogs(payload);
+          break;
+        case 'nginx_log_summary':
+          _handleNginxLogSummary(payload);
           break;
         case 'user_info':
           _handleUserInfo(payload);
@@ -77,6 +87,29 @@ class WsController extends GetxController {
     resourceUsageController.updateUsageData(data);
   }
 
+  void _handleShowLogs(Map<String, dynamic> data) {
+    if (data['status'] == 'success') {
+      logs.value = List<String>.from(data['logs']);
+      print("Logs received: ${logs.length} entries");
+    } else {
+      print("Failed to fetch logs: ${data['detail']}");
+    }
+  }
+
+  void _handleShowAuditLogs(Map<String, dynamic> data) {
+    if (data['status'] == 'success') {
+      auditLogs.value = List<String>.from(data['audit_logs']);
+      print("Audit logs received: ${auditLogs.length} entries");
+    } else {
+      print("Failed to fetch audit logs: ${data['detail']}");
+    }
+  }
+
+  void _handleNginxLogSummary(Map<String, dynamic> data) {
+    nginxLogSummary.value = data['summary'];
+    print("Nginx log summary received: $nginxLogSummary");
+  }
+
   void _handleUserInfo(Map<String, dynamic> data) {
     print("User info received: $data");
   }
@@ -85,37 +118,28 @@ class WsController extends GetxController {
     print("Notification received: $data");
   }
 
-  void sendMessage(String message, {String messageType = 'default'}) async {
-    final msg = {
-      'type': messageType,
-      'payload': message,
-    };
-    String encodedMessage = jsonEncode(msg);
+  void fetchLogs() {
+    webSocketService.requestShowLogs();
+  }
 
-    if (isConnected.value) {
-      api.sendMessageOverSocket(encodedMessage);
-  //    print("Sent message: $encodedMessage");
-    } else {
-      print('WebSocket is not connected. Retrying in 1 second...');
-      await Future.delayed(const Duration(seconds: 1));
-      if (isConnected.value) {
-        api.sendMessageOverSocket(encodedMessage);
-   //     print("Sent message after reconnect: $encodedMessage");
-      } else {
-        print("Failed to send message. WebSocket still not connected.");
-        showDisconnectedDialog();
-      }
-    }
+  void fetchAuditLogs() {
+    webSocketService.requestShowAuditLogs();
+  }
+
+  void fetchNginxLogSummary() {
+    webSocketService.requestNginxLogSummary();
   }
 
   void _startPeriodicStatusCheck() {
+    _statusCheckTimer?.cancel();
     _statusCheckTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
       if (isConnected.value) {
-   //     print("---------------------------------------------sending");
-        sendMessage("start_system_info", messageType: 'system_info');
+        print("---------------------------------------------sending periodic system_info");
+        webSocketService.requestSystemInfo();
       } else {
         timer.cancel();
-    //    print("WebSocket connection lost. Stopping status checks.");
+        print("WebSocket connection lost. Stopping status checks.");
+        connectWebSocket();
       }
     });
   }
@@ -130,17 +154,16 @@ class WsController extends GetxController {
             children: [
               CircularProgressIndicator(),
               SizedBox(height: 20),
-              Text(
-                  "Connection to the server was lost. Please refresh the page."),
+              Text("Connection to the server was lost. Attempting to reconnect..."),
             ],
           ),
           actions: [
             TextButton(
               onPressed: () {
-                // Close the dialog
                 Get.back();
+                connectWebSocket();
               },
-              child: const Text("OK"),
+              child: const Text("Retry"),
             ),
           ],
         ),
@@ -152,7 +175,7 @@ class WsController extends GetxController {
   @override
   void onClose() {
     super.onClose();
-    api.closeWebSocketConnection();
+    webSocketService.closeConnection();
     _statusCheckTimer?.cancel();
     print("WebSocket connection closed on controller dispose.");
   }

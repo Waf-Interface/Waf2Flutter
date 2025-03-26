@@ -17,6 +17,9 @@ class WafLogController extends GetxController {
   var modStatus = false.obs;
   Timer? timer;
 
+  HttpService httpService = HttpService();
+
+
   var warningsCount = 0.obs;
   var criticalCount = 0.obs;
   var messagesCount = 0.obs;
@@ -27,7 +30,7 @@ class WafLogController extends GetxController {
   void onInit() {
     fetchLogs();
     updateStatus();
-    timer = Timer.periodic(const Duration(seconds: 2), (_) => updateStatus());
+    timer = Timer.periodic(const Duration(seconds: 60), (_) => updateStatus());
     super.onInit();
   }
 
@@ -48,26 +51,34 @@ class WafLogController extends GetxController {
 
   void fetchLogs() async {
     isLoading.value = true;
-    List<dynamic> logData = await fetchWafLogs();
-    logs.value = List.generate(logData.length, (index) {
-      var logEntry = logData[index];
-      String summary = '';
-      if (logEntry['timestamp'] != null && logEntry['ip'] != null) {
-        summary = '${logEntry['timestamp']} - ${logEntry['ip']}';
-      } else {
-        summary = 'Log #${index + 1}';
-      }
+    List<dynamic> logData = await httpService.fetchWafLogs();
+    logs.value = logData.map((logEntry) {
+      String summary = (logEntry['timestamp'] != null && logEntry['ip'] != null)
+          ? '${logEntry['timestamp']} - ${logEntry['ip']}'
+          : 'Log Entry';
       return {
-        '#': index + 1,
         'summary': summary,
         'full': logEntry,
       };
+    }).toList();
+
+    logs.sort((a, b) {
+      DateTime dateA = DateTime.tryParse(a['full']['timestamp'] ?? '') ?? DateTime(1970);
+      DateTime dateB = DateTime.tryParse(b['full']['timestamp'] ?? '') ?? DateTime(1970);
+      return dateB.compareTo(dateA);
     });
+
+    for (int i = 0; i < logs.length; i++) {
+      logs[i]['#'] = i + 1;
+    }
+
     _updateCounts();
     applyFilter();
     lastRefresh.value = DateFormat('HH:mm:ss').format(DateTime.now());
     isLoading.value = false;
   }
+
+
 
   void _updateCounts() {
     int totalCritical = logs.where((log) {
@@ -158,6 +169,26 @@ class WafLogController extends GetxController {
       customMimeType: "application/json",
     );
   }
+  Map<String, int> getRuleTriggerCounts() {
+    Map<String, int> counts = {};
+    for (var log in logs) {
+      Map full = log['full'] ?? {};
+      String timestamp = full['timestamp']?.toString() ?? "";
+      if (timestamp.contains("/nginx/rules/")) {
+        int start = timestamp.indexOf("/nginx/rules/");
+        if (start != -1) {
+          int ruleStart = start + "/nginx/rules/".length;
+          int endIndex = timestamp.indexOf(RegExp(r'["\s]'), ruleStart);
+          if (endIndex == -1) {
+            endIndex = timestamp.length;
+          }
+          String ruleName = timestamp.substring(ruleStart, endIndex);
+          counts[ruleName] = (counts[ruleName] ?? 0) + 1;
+        }
+      }
+    }
+    return counts;
+  }
 
   void refreshLogs() {
     logs.clear();
@@ -166,7 +197,7 @@ class WafLogController extends GetxController {
   }
 
   void updateStatus() async {
-    bool status = await checkModSecurityStatus();
+    bool status = await httpService.checkModSecurityStatus();
     modStatus.value = status;
   }
 
