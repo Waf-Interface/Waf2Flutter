@@ -4,6 +4,10 @@ import 'config/Config.dart';
 import 'dart:convert';
 import 'dart:io';
 
+
+//=---------------------------
+//Uncompleted Usage Of Some Of Api's That We Update It Soon !
+//=----------------------------
 class WebSocketService {
   WebSocketChannel? channel;
   bool _isConnected = false;
