@@ -5,6 +5,7 @@ import 'package:msf/core/services/unit/api/http/app/app_http_service.dart';
 import 'package:msf/core/services/unit/api/http/auth/auth_http_service.dart';
 import 'package:msf/core/services/unit/api/http/interface/interface_http_service.dart';
 import 'package:msf/core/services/unit/api/http/log/log_http_service.dart';
+import 'package:msf/core/services/unit/api/http/update/update_http_service.dart';
 import 'package:msf/core/services/unit/api/http/user/user_http_service.dart';
 import 'package:msf/core/services/unit/api/http/waf/waf_http_service.dart';
 
@@ -17,6 +18,7 @@ class HttpService {
   final _logService = LogHttpService();
   final _userService = UserHttpService();
   final _wafService = WafHttpService();
+  final _updateService = UpdateHttpService();
   final _interfaceService = InterfaceHttpService();
 
   HttpService._internal() {
@@ -27,6 +29,7 @@ class HttpService {
     _userService.setHttpService(this);
     _wafService.setHttpService(this);
     _interfaceService.setHttpService(this);
+    _updateService.setHttpService(this);
   }
 
   String? sessionId;
@@ -35,7 +38,13 @@ class HttpService {
   Future<void> login(String username, String password) => _authService.login(username, password);
   Future<bool> verifyOtp(int otp) => _authService.verifyOtp(otp);
 
+  //Nginx Log Summery..
   Future<List<Map<String, dynamic>>> fetchNginxLogs() => _appService.fetchNginxLogs();
+  Future<bool> clearAuditLogs() => _logService.clearAuditLogs();
+  Future<Map<String, dynamic>> fetchNginxLogSummary() => _logService.fetchNginxLogSummary();
+  Future<Map<String, dynamic>> fetchDailyTraffic() => _logService.fetchDailyTraffic();
+
+
   Future<http.Response> uploadFile(String? filePath, String applicationName, List<int> fileBytes) =>
       _appService.uploadFile(filePath, applicationName, fileBytes);
   Future<http.Response> deployFile(String fileName) => _appService.deployFile(fileName);
@@ -87,7 +96,8 @@ class HttpService {
 
   Future<List<Map<String, dynamic>>> getActiveUsers() => _userService.getActiveUsers();
   Future<void> deleteActiveUser(int accessId) => _userService.deleteActiveUser(accessId);
-
+  Future<Map<String, dynamic>> checkUpdateStatus()=> _updateService.checkUpdateStatus();
+  Future<Map<String, dynamic>> updateCrs()=> _updateService.updateCrs();
   Future<bool> deleteRule(String ruleName) => _wafService.deleteRule(ruleName);
   Future<bool> setSecRuleEngine(String value) => _wafService.setSecRuleEngine(value);
   Future<bool> setSecResponseBodyAccess(bool value) => _wafService.setSecResponseBodyAccess(value);
