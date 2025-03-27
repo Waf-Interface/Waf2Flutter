@@ -7,25 +7,56 @@ import 'package:msf/core/services/unit/api/HttpService.dart';
 
 class NginxLogController extends GetxController {
   var nginxLogs = <Map<String, dynamic>>[].obs;
+  var logSummary = <String, dynamic>{}.obs;
+  var dailyTraffic = <String, dynamic>{}.obs;
   var filteredLogs = <Map<String, dynamic>>[].obs;
+
   var isLoading = false.obs;
 
   var filterType = 'All'.obs;
-  var filterRequestType = 'All'.obs; // فیلتر نوع درخواست
-  var filterStatusCode = 'All'.obs;  // فیلتر کد وضعیت
+  var filterRequestType = 'All'.obs;
+  var filterStatusCode = 'All'.obs;
   var selectedEntries = 10.obs;
   var searchText = ''.obs;
 
   final HttpService _httpService = HttpService();
+  Timer? _refreshTimer;
 
   @override
   void onInit() {
     super.onInit();
-    fetchNginxLogs();
+    _fetchAllData();
+    _startRefreshTimer();
+  }
+
+  @override
+  void onClose() {
+    _refreshTimer?.cancel();
+    super.onClose();
+  }
+
+  void _startRefreshTimer() {
+    _refreshTimer = Timer.periodic(const Duration(minutes: 1), (timer) {
+      _fetchAllData();
+    });
+  }
+
+  Future<void> _fetchAllData() async {
+    isLoading.value = true;
+    try {
+      await Future.wait([
+        fetchNginxLogs(),
+        fetchNginxLogSummary(),
+        fetchDailyTraffic(),
+      ]);
+    } catch (e) {
+      print("Error fetching all data: $e");
+    } finally {
+      isLoading.value = false;
+    }
   }
 
   Future<void> fetchNginxLogs() async {
-    isLoading.value = true;
     try {
       final logs = await _httpService.fetchNginxLogs();
       nginxLogs.value = logs.asMap().entries.map((entry) {
@@ -39,8 +70,26 @@ class NginxLogController extends GetxController {
     } catch (e) {
       print("Error in fetching logs: $e");
       nginxLogs.value = [];
-    } finally {
-      isLoading.value = false;
+    }
+  }
+
+  Future<void> fetchNginxLogSummary() async {
+    try {
+      final summary = await _httpService.fetchNginxLogSummary();
+      logSummary.value = summary;
+    } catch (e) {
+      print("Error in fetching log summary: $e");
+      logSummary.value = {};
+    }
+  }
+
+  Future<void> fetchDailyTraffic() async {
+    try {
+      final traffic = await _httpService.fetchDailyTraffic();
+      dailyTraffic.value = traffic;
+    } catch (e) {
+      print("Error in fetching daily traffic: $e");
+      dailyTraffic.value = {};
     }
   }
 
@@ -90,7 +139,7 @@ class NginxLogController extends GetxController {
         name: "nginx_logs",
         bytes: bytes,
         ext: "json",
-        mimeType: MimeType.json, // استفاده از MimeType به جای customMimeType
+        mimeType: MimeType.json,
       );
     } catch (e) {
       print("Error downloading logs: $e");
@@ -102,6 +151,6 @@ class NginxLogController extends GetxController {
   void refreshLogs() {
     nginxLogs.clear();
     filteredLogs.clear();
-    fetchNginxLogs();
+    _fetchAllData();
   }
 }

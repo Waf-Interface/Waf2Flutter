@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:msf/core/component/page_builder.dart';
-import 'package:msf/features/controllers/waf/WafSetup.dart';
 import 'package:msf/core/component/widgets/dashboard_textfield.dart';
+import 'package:msf/features/controllers/waf/WafSetup.dart';
 
 class EditConfigScreen extends StatefulWidget {
   final String fileKey;
@@ -17,6 +17,7 @@ class _EditConfigScreenState extends State<EditConfigScreen> {
   late final TextEditingController titleController;
   late final TextEditingController contentController;
   late final WafSetupController wafController;
+  SnackbarController? _snackbarController; // Store the snackbar controller
 
   @override
   void initState() {
@@ -25,7 +26,6 @@ class _EditConfigScreenState extends State<EditConfigScreen> {
     contentController = TextEditingController();
     wafController = Get.find<WafSetupController>();
 
-    // Fetch config file content when screen loads
     wafController.fetchConfigFile(widget.fileKey).then((_) {
       if (mounted) {
         setState(() {
@@ -38,6 +38,8 @@ class _EditConfigScreenState extends State<EditConfigScreen> {
 
   @override
   void dispose() {
+    // Close any active snackbar before disposing
+    _snackbarController?.close();
     titleController.dispose();
     contentController.dispose();
     super.dispose();
@@ -49,7 +51,6 @@ class _EditConfigScreenState extends State<EditConfigScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // Header Section
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -59,7 +60,11 @@ class _EditConfigScreenState extends State<EditConfigScreen> {
               child: Row(
                 children: [
                   IconButton(
-                    onPressed: () => Get.back(),
+                    onPressed: () {
+                      // Close any active snackbar before navigating back
+                      _snackbarController?.close();
+                      Get.back();
+                    },
                     icon: const Icon(Icons.arrow_back, size: 25),
                   ),
                   const SizedBox(width: 20),
@@ -89,7 +94,6 @@ class _EditConfigScreenState extends State<EditConfigScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            // Main Content Section
             Expanded(
               child: Obx(() {
                 return Container(
@@ -109,7 +113,6 @@ class _EditConfigScreenState extends State<EditConfigScreen> {
                         style: Theme.of(context).textTheme.bodyLarge,
                       ),
                       const SizedBox(height: 10),
-                      // Text Editor taking full available height
                       Expanded(
                         child: Container(
                           padding: const EdgeInsets.all(16),
@@ -119,9 +122,8 @@ class _EditConfigScreenState extends State<EditConfigScreen> {
                           ),
                           child: TextField(
                             controller: contentController,
-                            expands: true,   // Fills available space
-                            maxLines: null,  // Must be null when expands is true
-                            // minLines removed as it must be null when expands is true
+                            expands: true,
+                            maxLines: null,
                             keyboardType: TextInputType.multiline,
                             textAlignVertical: TextAlignVertical.top,
                             decoration: const InputDecoration(
@@ -130,14 +132,13 @@ class _EditConfigScreenState extends State<EditConfigScreen> {
                               hintStyle: TextStyle(color: Colors.grey),
                             ),
                             style: const TextStyle(
-                              fontFamily: 'monospace', // Better for config files
+                              fontFamily: 'monospace',
                               fontSize: 14,
                             ),
                           ),
                         ),
                       ),
                       const SizedBox(height: 16),
-                      // Buttons
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -150,22 +151,30 @@ class _EditConfigScreenState extends State<EditConfigScreen> {
                             onPressed: () async {
                               bool success = await wafController
                                   .restoreConfigFile(widget.fileKey);
+                              _snackbarController = Get.snackbar(
+                                "Success",
+                                "${widget.fileKey} restored successfully",
+                                duration: const Duration(seconds: 2),
+                              );
                               if (success) {
-                                Get.snackbar("Success",
-                                    "${widget.fileKey} restored successfully");
                                 wafController
                                     .fetchConfigFile(widget.fileKey)
                                     .then((_) {
                                   contentController.text = wafController
-                                      .configFileContents[widget.fileKey] ??
+                                      .configFileContents[
+                                  widget.fileKey] ??
                                       '';
                                 });
                               } else {
-                                Get.snackbar("Error",
-                                    "Failed to restore ${widget.fileKey}");
+                                _snackbarController = Get.snackbar(
+                                  "Error",
+                                  "Failed to restore ${widget.fileKey}",
+                                  duration: const Duration(seconds: 2),
+                                );
                               }
                             },
-                            icon: const Icon(Icons.restore, color: Colors.white),
+                            icon: const Icon(Icons.restore,
+                                color: Colors.white),
                             label: const Text("Restore",
                                 style: TextStyle(color: Colors.white)),
                           ),
@@ -176,21 +185,36 @@ class _EditConfigScreenState extends State<EditConfigScreen> {
                                   horizontal: 32, vertical: 12),
                             ),
                             onPressed: () async {
-                              String content = contentController.text.trim();
+                              String content =
+                              contentController.text.trim();
                               if (content.isNotEmpty) {
                                 bool success = await wafController
-                                    .updateConfigFile(widget.fileKey, content);
+                                    .updateConfigFile(
+                                    widget.fileKey, content);
                                 if (success) {
-                                  Get.snackbar("Success",
-                                      "${widget.fileKey} updated successfully");
+                                  _snackbarController = Get.snackbar(
+                                    "Success",
+                                    "${widget.fileKey} updated successfully",
+                                    duration: const Duration(seconds: 2),
+                                  );
+                                  // Wait for the snackbar to finish before navigating back
+                                  await Future.delayed(
+                                      const Duration(seconds: 2));
+                                  _snackbarController?.close();
                                   Get.back();
                                 } else {
-                                  Get.snackbar("Error",
-                                      "Failed to update ${widget.fileKey}");
+                                  _snackbarController = Get.snackbar(
+                                    "Error",
+                                    "Failed to update ${widget.fileKey}",
+                                    duration: const Duration(seconds: 2),
+                                  );
                                 }
                               } else {
-                                Get.snackbar(
-                                    "Error", "Content cannot be empty");
+                                _snackbarController = Get.snackbar(
+                                  "Error",
+                                  "Content cannot be empty",
+                                  duration: const Duration(seconds: 2),
+                                );
                               }
                             },
                             child: const Text("Save",

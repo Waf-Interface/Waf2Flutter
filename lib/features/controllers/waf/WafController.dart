@@ -19,7 +19,6 @@ class WafLogController extends GetxController {
 
   HttpService httpService = HttpService();
 
-
   var warningsCount = 0.obs;
   var criticalCount = 0.obs;
   var messagesCount = 0.obs;
@@ -36,14 +35,11 @@ class WafLogController extends GetxController {
 
   bool logMatches(Map fullLog, String search) {
     search = search.toLowerCase();
-    if ((fullLog['timestamp']?.toString().toLowerCase() ?? '').contains(search))
-      return true;
-    if ((fullLog['ip']?.toString().toLowerCase() ?? '').contains(search))
-      return true;
-    if (fullLog.containsKey('modsecurity_warnings')) {
-      for (var warning in fullLog['modsecurity_warnings']) {
-        if ((warning['message']?.toString().toLowerCase() ?? '')
-            .contains(search)) return true;
+    if ((fullLog['timestamp']?.toString().toLowerCase() ?? '').contains(search)) return true;
+    if ((fullLog['client_ip']?.toString().toLowerCase() ?? '').contains(search)) return true;
+    if (fullLog.containsKey('alerts')) {
+      for (var alert in fullLog['alerts']) {
+        if ((alert['message']?.toString().toLowerCase() ?? '').contains(search)) return true;
       }
     }
     return false;
@@ -51,43 +47,98 @@ class WafLogController extends GetxController {
 
   void fetchLogs() async {
     isLoading.value = true;
-    List<dynamic> logData = await httpService.fetchWafLogs();
-    logs.value = logData.map((logEntry) {
-      String summary = (logEntry['timestamp'] != null && logEntry['ip'] != null)
-          ? '${logEntry['timestamp']} - ${logEntry['ip']}'
-          : 'Log Entry';
-      return {
-        'summary': summary,
-        'full': logEntry,
-      };
-    }).toList();
 
-    logs.sort((a, b) {
-      DateTime dateA = DateTime.tryParse(a['full']['timestamp'] ?? '') ?? DateTime(1970);
-      DateTime dateB = DateTime.tryParse(b['full']['timestamp'] ?? '') ?? DateTime(1970);
-      return dateB.compareTo(dateA);
-    });
+    try {
+      dynamic response = await httpService.fetchWafLogs();
+      print("Raw response type: ${response.runtimeType}");
+      print("Raw response content: $response");
 
-    for (int i = 0; i < logs.length; i++) {
-      logs[i]['#'] = i + 1;
+      List<dynamic> logData;
+      if (response is String) {
+        var decoded = jsonDecode(response);
+        if (decoded is Map<String, dynamic> && decoded.containsKey("logs")) {
+          logData = decoded["logs"] ?? [];
+          print("Decoded Map, logs length: ${logData.length}");
+        } else if (decoded is List) {
+          logData = decoded;
+          print("Decoded List, length: ${logData.length}");
+        } else {
+          logData = [];
+          print("Decoded unexpected type: ${decoded.runtimeType}");
+        }
+      } else if (response is Map<String, dynamic>) {
+        logData = response["logs"] ?? [];
+        print("Response is Map, logs length: ${logData.length}");
+      } else if (response is List) {
+        logData = response;
+        print("Response is List, length: ${logData.length}");
+      } else {
+        logData = [];
+        print("Unexpected response type: ${response.runtimeType}");
+      }
+
+      print("Number of log entries: ${logData.length}");
+
+      logs.value = logData.map<Map<String, dynamic>>((logEntry) {
+        String summary = (logEntry['timestamp'] != null && logEntry['client_ip'] != null)
+            ? '${logEntry['timestamp']} - ${logEntry['client_ip']}'
+            : 'Log Entry';
+        return {
+          'summary': summary,
+          'full': logEntry,
+        };
+      }).toList();
+
+      print("Mapped logs count: ${logs.length}");
+
+      logs.sort((a, b) {
+        DateTime dateA = DateTime.tryParse(a['full']['timestamp'] ?? '') ?? DateTime(1970);
+        DateTime dateB = DateTime.tryParse(b['full']['timestamp'] ?? '') ?? DateTime(1970);
+        return dateB.compareTo(dateA);
+      });
+
+      for (int i = 0; i < logs.length; i++) {
+        logs[i]['#'] = (i + 1).toString();
+      }
+
+      _updateCounts();
+      applyFilter();
+    } catch (e) {
+      print("Error fetching logs: $e");
+      logs.value = [];
+      filteredLogs.value = [];
     }
 
-    _updateCounts();
-    applyFilter();
     lastRefresh.value = DateFormat('HH:mm:ss').format(DateTime.now());
     isLoading.value = false;
   }
 
-
+  void clearLogs() async {
+    isLoading.value = true;
+    try {
+      bool success = await httpService.clearAuditLogs();
+      if (success) {
+        logs.clear();
+        filteredLogs.clear();
+        Get.snackbar("Success", "All logs cleared successfully", snackPosition: SnackPosition.BOTTOM);
+      } else {
+        Get.snackbar("Error", "Failed to clear logs", snackPosition: SnackPosition.BOTTOM);
+      }
+    } catch (e) {
+      print("Error clearing logs: $e");
+      Get.snackbar("Error", "An error occurred while clearing logs", snackPosition: SnackPosition.BOTTOM);
+    }
+    isLoading.value = false;
+  }
 
   void _updateCounts() {
     int totalCritical = logs.where((log) {
       Map fullLog = log['full'];
-      if (fullLog.containsKey('modsecurity_warnings')) {
-        List warnings = fullLog['modsecurity_warnings'];
-        return warnings.any((w) {
+      if (fullLog.containsKey('alerts')) {
+        List alerts = fullLog['alerts'];
+        return alerts.any((w) {
           String msg = (w['message'] ?? '').toString().toLowerCase();
-          return msg.contains('sqli') || msg.contains('anomaly');
+          return msg.contains('sqli') || msg.contains('anomaly') || msg.contains('rce');
         });
       }
       return false;
@@ -95,20 +146,20 @@ class WafLogController extends GetxController {
 
     int totalWarnings = logs.where((log) {
       Map fullLog = log['full'];
-      if (fullLog.containsKey('modsecurity_warnings')) {
-        List warnings = fullLog['modsecurity_warnings'];
-        bool isCritical = warnings.any((w) {
+      if (fullLog.containsKey('alerts')) {
+        List alerts = fullLog['alerts'];
+        bool isCritical = alerts.any((w) {
           String msg = (w['message'] ?? '').toString().toLowerCase();
-          return msg.contains('sqli') || msg.contains('anomaly');
+          return msg.contains('sqli') || msg.contains('anomaly') || msg.contains('rce');
         });
-        return !isCritical;
+        return !isCritical && alerts.isNotEmpty;
       }
       return false;
     }).length;
 
     int totalMessages = logs.where((log) {
       Map fullLog = log['full'];
-      return !fullLog.containsKey('modsecurity_warnings');
+      return !fullLog.containsKey('alerts') || (fullLog['alerts'] as List).isEmpty;
     }).length;
 
     warningsCount.value = totalWarnings;
@@ -117,38 +168,47 @@ class WafLogController extends GetxController {
     allCount.value = logs.length;
   }
 
+  Map<String, int> getRuleTriggerCounts() {
+    Map<String, int> ruleCounts = {};
+    for (var log in logs) {
+      var fullLog = log['full'];
+      if (fullLog != null && fullLog.containsKey('alerts')) {
+        for (var alert in fullLog['alerts']) {
+          String ruleId = alert['id']?.toString() ?? 'Unknown';
+          ruleCounts[ruleId] = (ruleCounts[ruleId] ?? 0) + 1;
+        }
+      }
+    }
+    return ruleCounts;
+  }
+
   void applyFilter() {
     filteredLogs.value = logs.where((log) {
       String searchLower = searchText.value.toLowerCase();
       var fullLog = log['full'];
-      bool baseMatches = log['summary']
-          .toString()
-          .toLowerCase()
-          .contains(searchLower) ||
+      bool baseMatches = log['summary'].toString().toLowerCase().contains(searchLower) ||
           logMatches(fullLog, searchLower);
       bool typeMatches = true;
       if (filterType.value != "All") {
         if (filterType.value == "Warning") {
-          typeMatches = fullLog.containsKey('modsecurity_warnings');
+          typeMatches = fullLog.containsKey('alerts') && (fullLog['alerts'] as List).isNotEmpty;
         } else if (filterType.value == "Critical") {
-          if (fullLog.containsKey('modsecurity_warnings')) {
-            List warnings = fullLog['modsecurity_warnings'];
-            typeMatches = warnings.any((w) {
+          if (fullLog.containsKey('alerts')) {
+            List alerts = fullLog['alerts'];
+            typeMatches = alerts.any((w) {
               String msg = w['message']?.toString().toLowerCase() ?? '';
-              return msg.contains('sqli') || msg.contains('anomaly');
+              return msg.contains('sqli') || msg.contains('anomaly') || msg.contains('rce');
             });
           } else {
             typeMatches = false;
           }
         } else if (filterType.value == "IP") {
-          typeMatches = (fullLog['ip']?.toString().toLowerCase() ?? '')
-              .contains(searchLower);
+          typeMatches = (fullLog['client_ip']?.toString().toLowerCase() ?? '').contains(searchLower);
         } else if (filterType.value == "Message") {
-          if (fullLog.containsKey('modsecurity_warnings')) {
-            List warnings = fullLog['modsecurity_warnings'];
-            typeMatches = warnings.any((w) {
-              return (w['message']?.toString().toLowerCase() ?? '')
-                  .contains(searchLower);
+          if (fullLog.containsKey('alerts')) {
+            List alerts = fullLog['alerts'];
+            typeMatches = alerts.any((w) {
+              return (w['message']?.toString().toLowerCase() ?? '').contains(searchLower);
             });
           } else {
             typeMatches = false;
@@ -168,26 +228,6 @@ class WafLogController extends GetxController {
       ext: "json",
       customMimeType: "application/json",
     );
-  }
-  Map<String, int> getRuleTriggerCounts() {
-    Map<String, int> counts = {};
-    for (var log in logs) {
-      Map full = log['full'] ?? {};
-      String timestamp = full['timestamp']?.toString() ?? "";
-      if (timestamp.contains("/nginx/rules/")) {
-        int start = timestamp.indexOf("/nginx/rules/");
-        if (start != -1) {
-          int ruleStart = start + "/nginx/rules/".length;
-          int endIndex = timestamp.indexOf(RegExp(r'["\s]'), ruleStart);
-          if (endIndex == -1) {
-            endIndex = timestamp.length;
-          }
-          String ruleName = timestamp.substring(ruleStart, endIndex);
-          counts[ruleName] = (counts[ruleName] ?? 0) + 1;
-        }
-      }
-    }
-    return counts;
   }
 
   void refreshLogs() {

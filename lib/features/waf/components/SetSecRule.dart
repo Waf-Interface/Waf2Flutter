@@ -134,7 +134,7 @@ class SetSecRule extends StatelessWidget {
                     );
                   }
                 },
-                child: const Text("Change"),
+                child: const Text("Change",style: TextStyle(color: Colors.white),),
               ),
             ],
           ),

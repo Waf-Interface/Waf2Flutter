@@ -1,5 +1,4 @@
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:msf/core/component/page_builder.dart';
@@ -10,19 +9,17 @@ import 'package:msf/core/utills/colorconfig.dart';
 import 'package:msf/features/controllers/waf/WafController.dart';
 
 class WafLogScreen extends StatelessWidget {
-
   final WafLogController controller = Get.find<WafLogController>();
   final TextEditingController searchController = TextEditingController();
-
 
   BoxDecoration getLogDecoration(Map<String, dynamic> log, BuildContext context) {
     if (log.containsKey('full') && log['full'] is Map) {
       var full = log['full'] as Map;
-      if (full.containsKey('modsecurity_warnings')) {
-        List warnings = full['modsecurity_warnings'];
-        bool isCritical = warnings.any((w) {
+      if (full.containsKey('alerts')) {
+        List alerts = full['alerts'];
+        bool isCritical = alerts.any((w) {
           String msg = w['message']?.toString().toLowerCase() ?? '';
-          return msg.contains('sqli') || msg.contains('anomaly');
+          return msg.contains('sqli') || msg.contains('anomaly') || msg.contains('rce');
         });
         Color baseColor = isCritical ? Colors.redAccent : Colors.yellowAccent;
         return BoxDecoration(
@@ -46,18 +43,32 @@ class WafLogScreen extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text("Rule matched: ${fullLog['timestamp'] ?? 'N/A'}"),
-        Text("IP: ${fullLog['ip'] ?? 'N/A'}"),
-        if (fullLog.containsKey('modsecurity_warnings')) ...[
+        Text("Timestamp: ${fullLog['timestamp'] ?? 'N/A'}"),
+        Text("IP: ${fullLog['client_ip'] ?? 'N/A'}"),
+        Text("Method: ${fullLog['method'] ?? 'N/A'}"),
+        Text("Path: ${fullLog['path'] ?? 'N/A'}"),
+        if (fullLog.containsKey('alerts') && (fullLog['alerts'] as List).isNotEmpty) ...[
           const SizedBox(height: 8),
-          const Text("Warnings:", style: TextStyle(fontWeight: FontWeight.bold)),
-          ...List.generate((fullLog['modsecurity_warnings'] as List).length, (index) {
-            var warning = fullLog['modsecurity_warnings'][index];
+          const Text("Alerts:", style: TextStyle(fontWeight: FontWeight.bold)),
+          ...List.generate((fullLog['alerts'] as List).length, (index) {
+            var alert = fullLog['alerts'][index];
             return Padding(
               padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Text("- ${warning['message'] ?? ''}"),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text("Rule ID: ${alert['id'] ?? 'N/A'}"),
+                  Text("Message: ${alert['msg'] ?? 'N/A'}"),
+                  Text("Severity: ${alert['severity'] ?? 'N/A'}"),
+                  Text("File: ${alert['file'] ?? 'N/A'}"),
+                  Text("Line: ${alert['line'] ?? 'N/A'}"),
+                ],
+              ),
             );
           }),
+        ] else ...[
+          const SizedBox(height: 8),
+          const Text("No alerts"),
         ],
       ],
     );
@@ -82,7 +93,7 @@ class WafLogScreen extends StatelessWidget {
                       showRaw = !showRaw;
                     });
                   },
-                )
+                ),
               ],
             ),
             content: SingleChildScrollView(
@@ -97,7 +108,7 @@ class WafLogScreen extends StatelessWidget {
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),
                 child: const Text("Close"),
-              )
+              ),
             ],
           );
         });
@@ -136,7 +147,7 @@ class WafLogScreen extends StatelessWidget {
                 TextButton(
                   onPressed: () {
                     controller.filterType.value = tempSelected;
-                    controller.applyFilter(); // Ensure filtering is applied
+                    controller.applyFilter();
                     Get.back();
                   },
                   child: const Text("Apply"),
@@ -153,9 +164,35 @@ class WafLogScreen extends StatelessWidget {
     );
   }
 
+  void showClearLogsConfirmation(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Clear All Logs"),
+          content: const Text("This will clear all logs. Proceed?"),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text("No"),
+            ),
+            TextButton(
+              onPressed: () async {
+                 controller.clearLogs();
+                Navigator.of(context).pop();
+              },
+              child: const Text("Yes"),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    Get.put(WafLogController());
+
     return PageBuilder(
       sectionWidgets: [
         Container(
@@ -177,11 +214,22 @@ class WafLogScreen extends StatelessWidget {
                       Obx(() => Text("Showing last ${controller.filteredLogs.length} logs")),
                     ],
                   ),
-                  CustomIconbuttonWidget(
-                    backColor: primaryColor,
-                    onPressed: controller.downloadLogs,
-                    title: "Download Full Log",
-                    icon: Icons.download,
+                  Row(
+                    children: [
+                      CustomIconbuttonWidget(
+                        backColor: primaryColor,
+                        onPressed: controller.downloadLogs,
+                        title: "Download Full Log",
+                        icon: Icons.download,
+                      ),
+                      const SizedBox(width: 10),
+                      CustomIconbuttonWidget(
+                        backColor: Colors.red,
+                        onPressed: () => showClearLogsConfirmation(context),
+                        title: "Clear All Logs",
+                        icon: Icons.delete,
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -195,7 +243,6 @@ class WafLogScreen extends StatelessWidget {
                       list: [5, 10, 25, 50, 100],
                       value: controller.selectedEntries.value,
                       onchangeValue: (newVal) {
-                        print(newVal);
                         int value = int.tryParse(newVal.toString()) ?? 10;
                         controller.selectedEntries.value = value;
                         controller.applyFilter();
@@ -218,7 +265,10 @@ class WafLogScreen extends StatelessWidget {
                   const SizedBox(width: 10),
                   ElevatedButton(
                     onPressed: () => showFilterOptions(context),
-                    child: const Text("Filter",style: TextStyle(color: Colors.white),),
+                    child: const Text(
+                      "Filter",
+                      style: TextStyle(color: Colors.white),
+                    ),
                   ),
                   const SizedBox(width: 10),
                   IconButton(
@@ -231,58 +281,88 @@ class WafLogScreen extends StatelessWidget {
               Obx(() {
                 if (controller.isLoading.value) {
                   return const Center(child: CircularProgressIndicator());
+                } else if (controller.filteredLogs.isEmpty) {
+                  return const Center(
+                    child: Text(
+                      "No logs available. Check data source or filters.",
+                      style: TextStyle(fontSize: 16, color: Colors.grey),
+                    ),
+                  );
                 } else {
-                  return DataTable(
-                    columns: const [
-                      DataColumn(label: Text("#")),
-                      DataColumn(label: Text("Timestamp")),
-                      DataColumn(label: Text("IP Address")),
-                      DataColumn(label: Text("Logs")),
-                    ],
-                    rows: controller.filteredLogs.map((log) {
-                      BoxDecoration deco = getLogDecoration(log, context);
-                      return DataRow(
-                        onSelectChanged: (selected) {
-                          if (selected ?? false) {
-                            showLogDetails(context, log);
-                          }
-                        },
-                        cells: [
-                          DataCell(
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: deco,
-                              child: Text(log['#'].toString()),
+                  return SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: DataTable(
+                      columns: const [
+                        DataColumn(label: Text("#")),
+                        DataColumn(label: Text("Timestamp")),
+                        DataColumn(label: Text("IP Address")),
+                        DataColumn(label: Text("Logs")),
+                        DataColumn(label: Text("Results")),
+                      ],
+                      rows: controller.filteredLogs.map((log) {
+                        BoxDecoration deco = getLogDecoration(log, context);
+                        String results = log['full'].containsKey('alerts') && (log['full']['alerts'] as List).isNotEmpty
+                            ? (log['full']['alerts'] as List).map((a) => a['msg'] ?? 'N/A').join(', ')
+                            : 'No alerts';
+                        return DataRow(
+                          cells: [
+                            DataCell(
+                              GestureDetector(
+                                onTap: () => showLogDetails(context, log),
+                                child: Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: deco,
+                                  child: Text(log['#'].toString()),
+                                ),
+                              ),
                             ),
-                          ),
-                          DataCell(
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: deco,
-                              child: Text(log['full']['timestamp'] ?? 'N/A'),
+                            DataCell(
+                              GestureDetector(
+                                onTap: () => showLogDetails(context, log),
+                                child: Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: deco,
+                                  child: Text(log['full']['timestamp'] ?? 'N/A'),
+                                ),
+                              ),
                             ),
-                          ),
-                          DataCell(
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: deco,
-                              child: Text(log['full']['ip'] ?? 'N/A'),
+                            DataCell(
+                              GestureDetector(
+                                onTap: () => showLogDetails(context, log),
+                                child: Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: deco,
+                                  child: Text(log['full']['client_ip'] ?? 'N/A'),
+                                ),
+                              ),
                             ),
-                          ),
-                          DataCell(
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: deco,
-                              child: Text(log['summary']),
+                            DataCell(
+                              GestureDetector(
+                                onTap: () => showLogDetails(context, log),
+                                child: Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: deco,
+                                  child: Text(log['summary']),
+                                ),
+                              ),
                             ),
-                          ),
-                        ],
-                      );
-                    }).toList(),
+                            DataCell(
+                              GestureDetector(
+                                onTap: () => showLogDetails(context, log),
+                                child: Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: deco,
+                                  child: Text(results),
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                      }).toList(),
+                    ),
                   );
                 }
               }),
-
             ],
           ),
         ),

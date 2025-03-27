@@ -27,7 +27,7 @@ class Viewers extends StatelessWidget {
               fontSize: 15,
             ),
           ),
-          const Expanded(
+          Expanded(
             child: ViewLineChart(),
           )
         ],

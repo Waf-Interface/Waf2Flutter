@@ -10,7 +10,7 @@ class Viewers extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      height: 350,
+      height: 410,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: secondryColor,
@@ -27,7 +27,7 @@ class Viewers extends StatelessWidget {
               fontSize: 15,
             ),
           ),
-          const Expanded(
+          Expanded(
             child: ViewLineChart(),
           )
         ],

@@ -8,6 +8,7 @@ import 'package:msf/features/controllers/waf/WafSetup.dart';
 import 'package:msf/core/component/widgets/custom_iconbutton.dart';
 import 'package:msf/features/dashboard/component/CircleChar.dart';
 import 'package:msf/features/dashboard/component/RequestsBars.dart';
+import 'package:msf/features/system/update/UpdateStatusWidget.dart';
 import 'package:msf/features/waf/components/RadarChart.dart';
 import 'package:msf/features/waf/components/WafConfig.dart';
 import 'package:msf/features/waf/components/rulePlace.dart';
@@ -47,11 +48,13 @@ class _ManageWafScreenState extends State<WafManagerScreen> {
               const SizedBox(height: 10),
               SetSecRule(),
               const SizedBox(height: 10),
-               WafConfigWidget(),
+              WafConfigWidget(),
               const SizedBox(height: 10),
               RulePlace(),
               const SizedBox(height: 10),
               RadarChartWidget(),
+              const SizedBox(height: 10),
+              UpdateStatusWidget(),
             ],
           ),
           tablet: Column(
@@ -77,7 +80,7 @@ class _ManageWafScreenState extends State<WafManagerScreen> {
                           children: [
                             Expanded(flex: 3, child: SetSecRule()),
                             const SizedBox(width: 10),
-                            Expanded(flex: 2, child:  WafConfigWidget()),
+                            Expanded(flex: 2, child: WafConfigWidget()),
                           ],
                         ),
                         const SizedBox(height: 10),
@@ -86,7 +89,16 @@ class _ManageWafScreenState extends State<WafManagerScreen> {
                     ),
                   ),
                   const SizedBox(width: 10),
-                  Expanded(flex: 2, child: RadarChartWidget()),
+                  Expanded(
+                    flex: 2,
+                    child: Column(
+                      children: [
+                        RadarChartWidget(),
+                        const SizedBox(height: 10),
+                        UpdateStatusWidget(),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ],
@@ -114,7 +126,7 @@ class _ManageWafScreenState extends State<WafManagerScreen> {
                           children: [
                             Expanded(flex: 2, child: SetSecRule()),
                             const SizedBox(width: 10),
-                            Expanded(flex: 1, child:  WafConfigWidget()),
+                            Expanded(flex: 1, child: WafConfigWidget()),
                           ],
                         ),
                         const SizedBox(height: 10),
@@ -123,7 +135,16 @@ class _ManageWafScreenState extends State<WafManagerScreen> {
                     ),
                   ),
                   const SizedBox(width: 10),
-                  Expanded(flex: 1, child: RadarChartWidget()),
+                  Expanded(
+                    flex: 1,
+                    child: Column(
+                      children: [
+                        RadarChartWidget(),
+                        const SizedBox(height: 10),
+                        UpdateStatusWidget(), // Added here
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ],
@@ -132,6 +153,7 @@ class _ManageWafScreenState extends State<WafManagerScreen> {
       ],
     );
   }
+
 
   Widget get WafActions {
     return Container(
