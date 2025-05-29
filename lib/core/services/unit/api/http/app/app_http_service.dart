@@ -6,9 +6,8 @@ import 'package:msf/core/services/unit/api/HttpService.dart';
 import '../../config/Config.dart';
 
 class AppHttpService {
-
-  //Fixing error late init..
   late HttpService _httpService;
+
   void setHttpService(HttpService service) {
     _httpService = service;
   }
@@ -97,27 +96,6 @@ class AppHttpService {
     }
   }
 
-  Future<List<Website>> fetchAppList() async {
-    try {
-      final url = Uri.parse('${Config.httpAddress}/app_list');
-      final headers = _getHeaders();
-      print('Fetching app list with headers: $headers');
-      final response = await http.get(
-        url,
-        headers: headers,
-      );
-      print('Fetch app list response: ${response.statusCode} - ${response.body}');
-      if (response.statusCode == 200) {
-        final List<dynamic> apps = jsonDecode(response.body)['applications'];
-        return apps.map((data) => Website.fromJson(data)).toList();
-      } else {
-        throw Exception('Failed to fetch applications');
-      }
-    } catch (e) {
-      throw Exception('Error fetching applications: $e');
-    }
-  }
-
   Future<dynamic> getNetworkInterfaces() async {
     String url = '${Config.httpAddress}/sys/network/interfaces';
     try {
@@ -177,6 +155,107 @@ class AppHttpService {
       }
     } catch (e) {
       throw Exception('Error adding gateway: $e');
+    }
+  }
+
+  Future<List<Website>> listWebsites() async {
+    String url = '${Config.httpAddress}/websites/';
+    try {
+      final headers = _getHeaders();
+      print('Fetching websites list with headers: $headers');
+      final response = await http.get(
+        Uri.parse(url),
+        headers: headers,
+      );
+      print('Websites list response: ${response.statusCode} - ${response.body}');
+      if (response.statusCode == 200) {
+        final List<dynamic> websites = jsonDecode(response.body);
+        return websites.map((data) => Website.fromJson(data)).toList();
+      } else {
+        throw Exception('Failed to fetch websites: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Error fetching websites: $e');
+    }
+  }
+
+  Future<Website> getWebsite(String websiteId) async {
+    String url = '${Config.httpAddress}/websites/$websiteId';
+    try {
+      final headers = _getHeaders();
+      print('Fetching website with headers: $headers');
+      final response = await http.get(
+        Uri.parse(url),
+        headers: headers,
+      );
+      print('Get website response: ${response.statusCode} - ${response.body}');
+      if (response.statusCode == 200) {
+        return Website.fromJson(jsonDecode(response.body));
+      } else {
+        throw Exception('Failed to get website: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Error getting website: $e');
+    }
+  }
+
+  Future<Website> updateWebsiteStatus(String websiteId, String status) async {
+    String url = '${Config.httpAddress}/websites/$websiteId/status';
+    try {
+      final headers = _getHeaders();
+      final body = jsonEncode({'status': status});
+      print('Updating website status with headers: $headers and body: $body');
+      final response = await http.put(
+        Uri.parse(url),
+        headers: headers,
+        body: body,
+      );
+      print('Update website status response: ${response.statusCode} - ${response.body}');
+      if (response.statusCode == 200) {
+        return Website.fromJson(jsonDecode(response.body));
+      } else {
+        throw Exception('Failed to update website status: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Error updating website status: $e');
+    }
+  }
+
+  Future<Website> getWebsiteByName(String name) async {
+    String url = '${Config.httpAddress}/websites/by-name/$name';
+    try {
+      final headers = _getHeaders();
+      print('Fetching website by name with headers: $headers');
+      final response = await http.get(
+        Uri.parse(url),
+        headers: headers,
+      );
+      print('Get website by name response: ${response.statusCode} - ${response.body}');
+      if (response.statusCode == 200) {
+        return Website.fromJson(jsonDecode(response.body));
+      } else {
+        throw Exception('Failed to get website by name: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Error getting website by name: $e');
+    }
+  }
+
+  Future<void> deleteWebsite(String websiteId) async {
+    String url = '${Config.httpAddress}/websites/$websiteId';
+    try {
+      final headers = _getHeaders();
+      print('Deleting website with headers: $headers');
+      final response = await http.delete(
+        Uri.parse(url),
+        headers: headers,
+      );
+      print('Delete website response: ${response.statusCode} - ${response.body}');
+      if (response.statusCode != 200) {
+        throw Exception('Failed to delete website: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      throw Exception('Error deleting website: $e');
     }
   }
 }

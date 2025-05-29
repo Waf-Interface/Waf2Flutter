@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 class SnackbarHelper {
-  void questionSnackbar(
-          {required String question,
-          required String snackBarTitle,
-          required String snackBarMessage}) =>
+  void questionSnackbar({
+    required String question,
+    required String snackBarTitle,
+    required String snackBarMessage,
+    VoidCallback? onYes,
+  }) =>
       Get.dialog(
         AlertDialog(
           backgroundColor: Get.theme.scaffoldBackgroundColor,
@@ -41,9 +43,7 @@ class SnackbarHelper {
             TextButton(
               onPressed: () {
                 Get.back();
-
-                snackbarMaker(
-                    'Canceled'.tr, 'You have canceled the action.'.tr);
+                snackbarMaker('Canceled'.tr, 'You have canceled the action.'.tr);
               },
               child: const Text(
                 'Cancel',
@@ -56,6 +56,9 @@ class SnackbarHelper {
               onPressed: () {
                 Get.back();
                 snackbarMaker(snackBarTitle, snackBarMessage);
+                if (onYes != null) {
+                  onYes();
+                }
               },
               child: Text(
                 'Confirm',
@@ -67,19 +70,19 @@ class SnackbarHelper {
       );
 
   void snackbarMaker(String title, String message) => Get.snackbar(
-        title,
-        message,
-        snackPosition: SnackPosition.TOP,
-        maxWidth: 450,
-        margin: const EdgeInsets.all(10),
-        colorText: Colors.white,
-        duration: const Duration(seconds: 1000),
-        isDismissible: false,
-        mainButton: TextButton(
-          onPressed: () {
-            Get.back();
-          },
-          child: Text('YES'.tr),
-        ),
-      );
+    title,
+    message,
+    snackPosition: SnackPosition.TOP,
+    maxWidth: 450,
+    margin: const EdgeInsets.all(10),
+    colorText: Colors.white,
+    duration: const Duration(seconds: 1),
+    isDismissible: false,
+    mainButton: TextButton(
+      onPressed: () {
+        Get.back();
+      },
+      child: Text('YES'.tr),
+    ),
+  );
 }

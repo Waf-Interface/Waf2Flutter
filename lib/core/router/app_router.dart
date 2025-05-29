@@ -59,7 +59,7 @@ class AppRouter {
     GetPage(name: homeRoute, page: () => HomeScreen()),
     GetPage(name: websiteRoute, page: () => const WebsitesScreen()),
     GetPage(name: addWebsiteRoute, page: () =>  AddWebsiteScreen()),
-    GetPage(name: websiteLogRoute, page: () => const WebsitesLogScreen()),
+    GetPage(name: websiteLogRoute, page: () => const AuditLogScreen()),
     GetPage(name: editWebsiteRoute, page: () => const EditWebsite()),
     GetPage(
       name: activeConnectionRoute,

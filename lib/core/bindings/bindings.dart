@@ -18,6 +18,7 @@ import 'package:msf/features/controllers/waf/WafSetup.dart';
 import 'package:msf/features/controllers/websites/uploads/UploadController.dart';
 import 'package:msf/features/controllers/websites/website/websiteController.dart';
 import '../../features/controllers/user/UserController.dart';
+import '../../features/controllers/waf/WafWebsite.dart';
 import '../../features/controllers/ws/WsController.dart';
 
 class MyBindings implements Bindings {
@@ -25,15 +26,17 @@ class MyBindings implements Bindings {
   void dependencies() {
     Get.put(ThemeController());
     Get.put(WebsiteController());
+    Get.put(WafWebsiteController());
     Get.put(UploadController());
+    Get.put(LoginController());
     Get.put(UpdateController());
     Get.put(SystemController());
     Get.put(UserController());
+    Get.put(WsController());
     Get.put(NginxLogController());
-    Get.lazyPut(() => LoginController());
     Get.lazyPut(() => InterfaceController());
     Get.lazyPut(() => Menu_Controller());
-    Get.lazyPut(() => WafRuleController());
+    Get.put(WafRuleController());
     Get.put(Counter());
     Get.put(WafLogController());
     Get.put(WafSetupController());
@@ -41,7 +44,6 @@ class MyBindings implements Bindings {
     Get.lazyPut(() => TranslateController());
     Get.put(IdleController());
     Get.lazyPut(() => ResourceUsageController());
-    Get.put(WsController());
     Get.lazyPut(() => CaptchaController());
   }
 }

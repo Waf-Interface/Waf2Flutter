@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:msf/core/utills/colorconfig.dart';
+import 'package:msf/core/utills/_colorconfig.dart';
 
 class DashboardTextfield extends StatelessWidget {
   final TextEditingController textEditingController;
   final String? hintText;
   final int maxLength;
   final int? maxLines;
+  final int? minLines;
   final FocusNode? focusNode;
   final TextInputType? inputType;
   final Function(String)? onChanged;
@@ -16,8 +17,9 @@ class DashboardTextfield extends StatelessWidget {
     this.hintText,
     this.focusNode,
     this.onChanged,
-    this.maxLength = 10,
+    this.maxLength = 20,
     this.maxLines,
+    this.minLines,
   });
 
   @override
@@ -26,6 +28,7 @@ class DashboardTextfield extends StatelessWidget {
       controller: textEditingController,
       focusNode: focusNode,
       maxLength: maxLength,
+      minLines: minLines,
       keyboardType: inputType,
       maxLines: maxLines,
       onChanged: (value) => onChanged!(value),
