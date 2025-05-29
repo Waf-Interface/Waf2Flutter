@@ -1,18 +1,21 @@
+import 'dart:ui'; // برای BackdropFilter
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:msf/core/component/page_builder.dart';
-import 'package:msf/core/services/unit/api/HttpService.dart';
-import 'package:msf/features/controllers/settings/MenuController.dart';
-import 'package:msf/features/controllers/waf/WafSetup.dart';
 import 'package:msf/core/component/widgets/custom_iconbutton.dart';
+import 'package:msf/core/services/unit/api/HttpService.dart';
+import 'package:msf/core/utills/ColorConfig.dart';
+import 'package:msf/core/utills/responsive.dart';
+import 'package:msf/features/controllers/settings/MenuController.dart';
+import 'package:msf/features/controllers/settings/ThemeController.dart';
+import 'package:msf/features/controllers/waf/WafSetup.dart';
 import 'package:msf/features/dashboard/component/CircleChar.dart';
 import 'package:msf/features/dashboard/component/RequestsBars.dart';
 import 'package:msf/features/system/update/UpdateStatusWidget.dart';
 import 'package:msf/features/waf/components/RadarChart.dart';
 import 'package:msf/features/waf/components/WafConfig.dart';
 import 'package:msf/features/waf/components/rulePlace.dart';
-import 'package:msf/core/utills/responsive.dart';
 import 'components/SetSecRule.dart';
 
 class WafManagerScreen extends StatefulWidget {
@@ -24,6 +27,7 @@ class WafManagerScreen extends StatefulWidget {
 
 class _ManageWafScreenState extends State<WafManagerScreen> {
   final Menu_Controller menuController = Get.find<Menu_Controller>();
+  final ThemeController themeController = Get.find<ThemeController>();
   final ScrollController scrollbarController = ScrollController();
   HttpService httpService = HttpService();
 
@@ -141,7 +145,7 @@ class _ManageWafScreenState extends State<WafManagerScreen> {
                       children: [
                         RadarChartWidget(),
                         const SizedBox(height: 10),
-                        UpdateStatusWidget(), // Added here
+                        UpdateStatusWidget(),
                       ],
                     ),
                   ),
@@ -154,131 +158,152 @@ class _ManageWafScreenState extends State<WafManagerScreen> {
     );
   }
 
-
   Widget get WafActions {
-    return Container(
-      height: 350,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.onSecondary,
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    return Obx(() {
+      final isCinematic = themeController.isCinematic.value;
+      return ClipRRect(
         borderRadius: BorderRadius.circular(10),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const AutoSizeText(
-            "Waf Actions",
-            maxLines: 1,
-          ),
-          const SizedBox(height: 15),
-          FutureBuilder<bool>(
-            future: httpService.checkModSecurityStatus(),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return CircleChart(
-                  circleColor: Colors.grey[500]!,
-                  mainText: "Loading",
-                  subText: "Checking status...",
-                );
-              } else if (snapshot.hasError) {
-                return CircleChart(
-                  circleColor: Colors.redAccent,
-                  mainText: "Error",
-                  subText: "Unable to get status",
-                );
-              } else if (snapshot.hasData) {
-                bool isOn = snapshot.data!;
-                if (isOn) {
-                  return CircleChart(
-                    circleColor: Colors.greenAccent,
-                    mainText: "Safe",
-                    subText: "WAF is ON!",
-                  );
-                } else {
-                  return CircleChart(
-                    circleColor: Colors.redAccent,
-                    mainText: "Unsafe",
-                    subText: "WAF is OFF!",
-                  );
-                }
-              }
-              return CircleChart(
-                circleColor: Colors.grey[500]!,
-                mainText: "Loading",
-                subText: "Checking status...",
-              );
-            },
-          ),
-          const SizedBox(height: 40),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            decoration: BoxDecoration(
+        child: BackdropFilter(
+          filter: isCinematic
+              ? ImageFilter.blur(sigmaX: 10, sigmaY: 10)
+              : ImageFilter.blur(sigmaX: 0, sigmaY: 0),
+          child: Container(
+            height: 350,
+            padding: const EdgeInsets.all(16),
+            decoration: isCinematic
+                ? BoxDecoration(
+              color: ColorConfig.glassColor,
               border: Border.all(
-                color: Theme.of(context).dividerColor,
-                width: 1.5,
+                color: isDarkMode
+                    ? Colors.white.withOpacity(0.01)
+                    : Colors.black.withOpacity(0.0),
               ),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(10),
+            )
+                : BoxDecoration(
+              color: Theme.of(context).colorScheme.onSecondary, // تم پیش‌فرض
+              borderRadius: BorderRadius.circular(10),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                CustomIconbuttonWidget(
-                  backColor: Colors.yellow[100]!,
-                  iconColor: Colors.yellow[900]!,
-                  titleColor: Colors.yellow[900]!,
-                  title: "Check Confg",
-                  icon: Icons.check,
-                  onPressed: () async {
-                    bool status = await httpService.checkModSecurityStatus();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(status ? "WAF is ON!" : "WAF is OFF!"),
-                      ),
+                 AutoSizeText(
+                  "Waf Actions".tr,
+                  maxLines: 1,
+                ),
+                const SizedBox(height: 15),
+                FutureBuilder<bool>(
+                  future: httpService.checkModSecurityStatus(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return CircleChart(
+                        circleColor: Colors.grey[500]!,
+                        mainText: "Loading".tr,
+                        subText: "Checking status...".tr,
+                      );
+                    } else if (snapshot.hasError) {
+                      return CircleChart(
+                        circleColor: Colors.redAccent,
+                        mainText: "Error".tr,
+                        subText: "Unable to get status".tr,
+                      );
+                    } else if (snapshot.hasData) {
+                      bool isOn = snapshot.data!;
+                      if (isOn) {
+                        return CircleChart(
+                          circleColor: Colors.greenAccent,
+                          mainText: "Safe".tr,
+                          subText: "WAF is ON!".tr,
+                        );
+                      } else {
+                        return CircleChart(
+                          circleColor: Colors.redAccent,
+                          mainText: "Unsafe".tr,
+                          subText: "WAF is OFF!".tr,
+                        );
+                      }
+                    }
+                    return CircleChart(
+                      circleColor: Colors.grey[500]!,
+                      mainText: "Loading".tr,
+                      subText: "Checking status...".tr,
                     );
-                    setState(() {});
                   },
                 ),
-                CustomIconbuttonWidget(
-                  backColor: Colors.green[100]!,
-                  iconColor: Colors.green[900]!,
-                  titleColor: Colors.green[900]!,
-                  title: "Start Engine",
-                  icon: Icons.play_arrow,
-                  onPressed: () async {
-                    bool result = await httpService.toggleModSecurity("on");
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(result
-                            ? "WAF started successfully!"
-                            : "Failed to start WAF"),
+                const SizedBox(height: 40),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: Theme.of(context).dividerColor,
+                      width: 1.5,
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      CustomIconbuttonWidget(
+                        backColor: Colors.yellow[100]!,
+                        iconColor: Colors.yellow[900]!,
+                        titleColor: Colors.yellow[900]!,
+                        title: "Check Confg".tr,
+                        icon: Icons.check,
+                        onPressed: () async {
+                          bool status = await httpService.checkModSecurityStatus();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(status ? "WAF is ON!".tr : "WAF is OFF!".tr),
+                            ),
+                          );
+                          setState(() {});
+                        },
                       ),
-                    );
-                    setState(() {});
-                  },
-                ),
-                CustomIconbuttonWidget(
-                  backColor: Colors.redAccent[100]!,
-                  iconColor: Colors.red[900]!,
-                  titleColor: Colors.red[900]!,
-                  title: "Stop Engine",
-                  icon: Icons.stop,
-                  onPressed: () async {
-                    bool result = await httpService.toggleModSecurity("off");
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(result
-                            ? "WAF stopped successfully!"
-                            : "Failed to stop WAF"),
+                      CustomIconbuttonWidget(
+                        backColor: Colors.green[100]!,
+                        iconColor: Colors.green[900]!,
+                        titleColor: Colors.green[900]!,
+                        title: "Start Engine".tr,
+                        icon: Icons.play_arrow,
+                        onPressed: () async {
+                          bool result = await httpService.toggleModSecurity("on");
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(result
+                                  ? "WAF started successfully!".tr
+                                  : "Failed to start WAF".tr),
+                            ),
+                          );
+                          setState(() {});
+                        },
                       ),
-                    );
-                    setState(() {});
-                  },
+                      CustomIconbuttonWidget(
+                        backColor: Colors.redAccent[100]!,
+                        iconColor: Colors.red[900]!,
+                        titleColor: Colors.red[900]!,
+                        title: "Stop Engine".tr,
+                        icon: Icons.stop,
+                        onPressed: () async {
+                          bool result = await httpService.toggleModSecurity("off".tr);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(result
+                                  ? "WAF stopped successfully!".tr
+                                  : "Failed to stop WAF".tr),
+                            ),
+                          );
+                          setState(() {});
+                        },
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
           ),
-        ],
-      ),
-    );
+        ),
+      );
+    });
   }
 }

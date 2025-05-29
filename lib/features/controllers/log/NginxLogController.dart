@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:file_saver/file_saver.dart';
 import 'package:get/get.dart';
 import 'package:msf/core/services/unit/api/HttpService.dart';
+import 'package:msf/features/controllers/ws/WsController.dart';
 
 class NginxLogController extends GetxController {
   var nginxLogs = <Map<String, dynamic>>[].obs;
@@ -20,13 +21,15 @@ class NginxLogController extends GetxController {
   var searchText = ''.obs;
 
   final HttpService _httpService = HttpService();
+  late final WsController wsController;
   Timer? _refreshTimer;
 
   @override
   void onInit() {
+    wsController = Get.find<WsController>();
+    _syncWithWebSocket();
+    fetchDailyTraffic();
     super.onInit();
-    _fetchAllData();
-    _startRefreshTimer();
   }
 
   @override
@@ -35,62 +38,80 @@ class NginxLogController extends GetxController {
     super.onClose();
   }
 
+  void _syncWithWebSocket() {
+    ever(wsController.nginxLogs, (List<Map<String, dynamic>> logs) {
+      _processNginxLogs(logs);
+    });
+
+    ever(wsController.summary, (Map<String, dynamic> summary) {
+      logSummary.value = summary;
+      print("Log summary updated: $summary");
+    });
+
+    ever(wsController.isConnected, (bool connected) {
+      if (!connected) {
+        isLoading.value = true;
+      } else {
+        isLoading.value = false;
+        fetchWebSocketData(); // Request WebSocket data when reconnected
+      }
+    });
+
+    // Initial WebSocket request
+    if (wsController.isConnected.value) {
+      fetchWebSocketData();
+    }
+
+    _startRefreshTimer();
+  }
+
   void _startRefreshTimer() {
+    _refreshTimer?.cancel();
     _refreshTimer = Timer.periodic(const Duration(minutes: 1), (timer) {
-      _fetchAllData();
+      fetchAllData();
     });
   }
 
-  Future<void> _fetchAllData() async {
-    isLoading.value = true;
-    try {
-      await Future.wait([
-        fetchNginxLogs(),
-        fetchNginxLogSummary(),
-        fetchDailyTraffic(),
-      ]);
-    } catch (e) {
-      print("Error fetching all data: $e");
-    } finally {
-      isLoading.value = false;
-    }
+  void fetchAllData() {
+    fetchWebSocketData();
+    fetchDailyTraffic();
   }
 
-  Future<void> fetchNginxLogs() async {
-    try {
-      final logs = await _httpService.fetchNginxLogs();
-      nginxLogs.value = logs.asMap().entries.map((entry) {
-        int index = entry.key + 1;
-        var log = entry.value;
-        log['#'] = index;
-        log['summary'] = "${log['request']} - ${log['status']}";
-        return log;
-      }).toList();
-      applyFilter();
-    } catch (e) {
-      print("Error in fetching logs: $e");
-      nginxLogs.value = [];
-    }
-  }
-
-  Future<void> fetchNginxLogSummary() async {
-    try {
-      final summary = await _httpService.fetchNginxLogSummary();
-      logSummary.value = summary;
-    } catch (e) {
-      print("Error in fetching log summary: $e");
-      logSummary.value = {};
-    }
+  void fetchWebSocketData() {
+    wsController.fetchNginxLog();
+    wsController.fetchSummary();
   }
 
   Future<void> fetchDailyTraffic() async {
     try {
       final traffic = await _httpService.fetchDailyTraffic();
       dailyTraffic.value = traffic;
+      print("Daily traffic updated via HTTP: $traffic");
     } catch (e) {
-      print("Error in fetching daily traffic: $e");
+      print("Error fetching daily traffic: $e");
       dailyTraffic.value = {};
     }
+  }  Future<void> fetchLogs() async {
+    try {
+      final logs = await _httpService.fetchNginxLogs();
+      nginxLogs.value = logs;
+      print("Daily traffic updated via HTTP: $logs");
+    } catch (e) {
+      print("Error fetching daily traffic: $e");
+      dailyTraffic.value = {};
+    }
+  }
+
+  void _processNginxLogs(List<Map<String, dynamic>> logs) {
+    nginxLogs.value = logs.asMap().entries.map((entry) {
+      int index = entry.key + 1;
+      var log = Map<String, dynamic>.from(entry.value);
+      log['#'] = index;
+      log['summary'] = "${log['request']} - ${log['status']}";
+      return log;
+    }).toList();
+    applyFilter();
+    isLoading.value = false;
   }
 
   void applyFilter() {
@@ -151,6 +172,8 @@ class NginxLogController extends GetxController {
   void refreshLogs() {
     nginxLogs.clear();
     filteredLogs.clear();
-    _fetchAllData();
+    fetchAllData();
+    fetchDailyTraffic();
+    fetchLogs();
   }
 }

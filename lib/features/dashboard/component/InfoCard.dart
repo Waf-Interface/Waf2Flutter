@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:get/get.dart';
-import 'package:msf/core/utills/colorconfig.dart';
+import 'package:msf/core/utills/ColorConfig.dart';
+import 'package:msf/core/utills/_colorconfig.dart';
+import 'package:msf/features/controllers/settings/ThemeController.dart';
 
 class InfoCards extends StatelessWidget {
   final IconData icon;
@@ -23,10 +25,13 @@ class InfoCards extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ThemeController themeController = Get.find<ThemeController>();
+    final isCinematic = themeController.isCinematic.value;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: secondryColor,
+        color: isCinematic ? ColorConfig.glassColor : secondryColor,
         borderRadius: BorderRadius.circular(10),
       ),
       child: Column(
@@ -63,7 +68,7 @@ class InfoCards extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                "$numOfFiles Files".tr,
+                "$numOfFiles ".tr,
                 style: const TextStyle(
                   color: Colors.white70,
                 ),

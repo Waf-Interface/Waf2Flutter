@@ -12,7 +12,6 @@ import 'package:msf/core/services/unit/api/HttpService.dart';
 class UploadController extends GetxController {
   final RxString statusMessage = ''.obs;
   final HttpService _httpService = HttpService();
-
   var isUploading = false.obs;
 
   Future<void> uploadZipFile({
@@ -26,7 +25,6 @@ class UploadController extends GetxController {
 
     if (result != null) {
       List<int> fileBytes = result.files.single.bytes!;
-
       String? filePath;
       if (!kIsWeb) {
         filePath = result.files.single.path;
@@ -112,8 +110,10 @@ class UploadController extends GetxController {
       );
     }
   }
+
   void cancelUpload() {
     statusMessage.value = 'Upload canceled.';
     Get.back();
   }
+
 }

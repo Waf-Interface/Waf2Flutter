@@ -1,6 +1,6 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
-import '../../../core/utills/colorconfig.dart';
+import '../../../core/utills/_colorconfig.dart';
 
 class LogChart extends StatefulWidget {
   const LogChart({super.key});

@@ -1,8 +1,10 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:msf/core/component/page_builder.dart';
 import 'package:msf/features/controllers/settings/MenuController.dart';
-
+import 'package:msf/features/controllers/settings/ThemeController.dart';
+import 'package:msf/core/utills/ColorConfig.dart';
 
 class MediaScreen extends StatefulWidget {
   const MediaScreen({super.key});
@@ -14,91 +16,158 @@ class MediaScreen extends StatefulWidget {
 class _MediaScreenState extends State<MediaScreen> {
   final GlobalKey<ScaffoldState> scaffoldKey = GlobalKey<ScaffoldState>();
   final Menu_Controller menuController = Get.find<Menu_Controller>();
+  final ThemeController themeController = Get.find<ThemeController>();
+  final isDarkMode = Get.theme.brightness == Brightness.dark;
 
   @override
   Widget build(BuildContext context) {
     return PageBuilder(
       sectionWidgets: [
-        const Text("Media Icon Tribute"),
+        const Text("About"),
         const SizedBox(height: 16),
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.onSecondary,
+        Obx(() {
+          final isCinematic = themeController.isCinematic.value;
+          return ClipRRect(
             borderRadius: BorderRadius.circular(10),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                "Media Icon Tribute",
-                style: TextStyle(fontSize: 20),
-              ),
-              const SizedBox(height: 8),
-              Padding(
-                padding: const EdgeInsets.all(15.0),
-                child: Column(
+            child: BackdropFilter(
+              filter: isCinematic
+                  ? ImageFilter.blur(sigmaX: 10, sigmaY: 10)
+                  : ImageFilter.blur(sigmaX: 0, sigmaY: 0),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: isCinematic
+                    ? BoxDecoration(
+                  color: ColorConfig.glassColor,
+                  border: Border.all(
+                    color: isDarkMode ? Colors.white.withOpacity(0.01) : Colors.black.withOpacity(0.0),
+                  ),
+                  borderRadius: BorderRadius.circular(10),
+                )
+                    : BoxDecoration(
+                  color: Theme.of(context).colorScheme.onSecondary,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      "The purpose of this page is to tribute authors from media resources used in WAF2Py.",
-                      style: TextStyle(fontSize: 16),
+                    Text(
+                      "Hello Dear Reader",
+                      style: TextStyle(fontSize: 20),
                     ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      "All icons used in this project were downloaded from flaticon.com.",
-                      style: TextStyle(fontSize: 16),
-                    ),
-                    const SizedBox(height: 25),
-                    const Text(
-                      "Following is the list of authors:",
-                      style: TextStyle(fontSize: 16),
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
-                        Text("• "),
-                        Expanded(
-                          child: Text(
-                            "Icons made by Freepik from www.flaticon.com",
+                    SizedBox(height: 8),
+                    Padding(
+                      padding: EdgeInsets.all(15.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                          "This waf interface that you dear, currently using it, its a flower from hardworking people who develop this interface for working easily with ModSecurity WAF in months.",
+                          style: TextStyle(fontSize: 16),
+                        ),
+                          Text(
+                            "Let me make it short,The purpose of this page is to respect the production team.",
                             style: TextStyle(fontSize: 16),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
-                        Text("• "),
-                        Expanded(
-                          child: Text(
-                            "Icons made by Nikita Golubev from www.flaticon.com",
+                          SizedBox(height: 8),
+                          Text(
+                            "And of course you dear user.",
                             style: TextStyle(fontSize: 16),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
-                        Text("• "),
-                        Expanded(
-                          child: Text(
-                            "Icons made by turkkub from www.flaticon.com",
+                          SizedBox(height: 25),
+                          Text(
+                            "Following is the list of developers, whom working on this waf interface:",
                             style: TextStyle(fontSize: 16),
                           ),
-                        ),
-                      ],
+                          SizedBox(height: 16),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text("• "),
+                              Expanded(
+                                child: Text(
+                                  "Mortza Mansouri, Leader team , < Flutter / FastApi Developer > ",
+                                  style: TextStyle(fontSize: 16),
+                                ),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 8),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text("• "),
+                              Expanded(
+                                child: Text(
+                                  "Mohammad Esmaili < Flutter Developer >",
+                                  style: TextStyle(fontSize: 16),
+                                ),
+                              ),
+
+                            ],
+                          ),
+                          SizedBox(height: 8),
+                          SizedBox(height: 20),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  "And dear helpers, whom help this project to grow, to experience :",
+                                  style: TextStyle(fontSize: 16),
+                                ),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 12),
+
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text("• "),
+                              Expanded(
+                                child: Text(
+                                  "Ehsan Moradi < FastApi Developer >",
+                                  style: TextStyle(fontSize: 16),
+                                ),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 8),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text("• "),
+                              Expanded(
+                                child: Text(
+                                  "Erfan JasemZadeh < Flutter Developer >",
+                                  style: TextStyle(fontSize: 16),
+                                ),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 8),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text("• "),
+                              Expanded(
+                                child: Text(
+                                  "Reza Mostofi < FastApi developer > ",
+                                  style: TextStyle(fontSize: 16),
+                                ),
+                              ),
+
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
               ),
-            ],
-          ),
-        ),
+            ),
+          );
+        }),
       ],
     );
   }

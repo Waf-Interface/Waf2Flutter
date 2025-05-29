@@ -1,51 +1,74 @@
+import 'dart:ui'; // برای BackdropFilter
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:msf/core/component/page_builder.dart';
 import 'package:msf/core/component/widgets/custom_iconbutton.dart';
 import 'package:msf/core/component/widgets/status_widget.dart';
-import 'package:msf/core/utills/colorconfig.dart';
+import 'package:msf/core/utills/ColorConfig.dart';
 import 'package:msf/core/utills/responsive.dart';
 import 'package:msf/features/controllers/Interface/InterfaceController.dart';
+import 'package:msf/features/controllers/settings/ThemeController.dart';
 
 class ManageInterfaceScreen extends GetView<InterfaceController> {
   const ManageInterfaceScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    Get.find<InterfaceController>();
-
+    final ThemeController themeController = Get.find<ThemeController>();
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final ScrollController scrollbarController = ScrollController();
 
     return PageBuilder(
       sectionWidgets: [
-        Container(
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.onSecondary,
+        Obx(() {
+          final isCinematic = themeController.isCinematic.value;
+          return ClipRRect(
             borderRadius: BorderRadius.circular(10),
-          ),
-          child: Responsive(
-            mobile: Scrollbar(
-              controller: scrollbarController,
-              child: SingleChildScrollView(
-                controller: scrollbarController,
-                scrollDirection: Axis.horizontal,
-                child: ipTable(),
+            child: BackdropFilter(
+              filter: isCinematic
+                  ? ImageFilter.blur(sigmaX: 10, sigmaY: 10)
+                  : ImageFilter.blur(sigmaX: 0, sigmaY: 0),
+              child: Container(
+                decoration: isCinematic
+                    ? BoxDecoration(
+                  color: ColorConfig.glassColor,
+                  border: Border.all(
+                    color: isDarkMode
+                        ? Colors.white.withOpacity(0.01)
+                        : Colors.black.withOpacity(0.0),
+                  ),
+                  borderRadius: BorderRadius.circular(10),
+                )
+                    : BoxDecoration(
+                  color: Theme.of(context).colorScheme.onSecondary,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Responsive(
+                  mobile: Scrollbar(
+                    controller: scrollbarController,
+                    child: SingleChildScrollView(
+                      controller: scrollbarController,
+                      scrollDirection: Axis.horizontal,
+                      child: ipTable(),
+                    ),
+                  ),
+                  tablet: Scrollbar(
+                    controller: scrollbarController,
+                    child: SingleChildScrollView(
+                      controller: scrollbarController,
+                      scrollDirection: Axis.horizontal,
+                      child: ipTable(),
+                    ),
+                  ),
+                  desktop: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [ipTable()],
+                  ),
+                ),
               ),
             ),
-            tablet: Scrollbar(
-              controller: scrollbarController,
-              child: SingleChildScrollView(
-                controller: scrollbarController,
-                scrollDirection: Axis.horizontal,
-                child: ipTable(),
-              ),
-            ),
-            desktop: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [ipTable()],
-            ),
-          ),
-        ),
+          );
+        }),
       ],
     );
   }
@@ -86,7 +109,7 @@ class ManageInterfaceScreen extends GetView<InterfaceController> {
         dataCellMaker(row["usedby"]),
         DataCell(StatusWidget(
           title: row["status"],
-          backgrounColor: primaryColor,
+          backgrounColor: ColorConfig.primaryColor,
           titleColor: Colors.white,
         )),
         DataCell(

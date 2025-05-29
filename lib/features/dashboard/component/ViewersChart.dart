@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:msf/features/dashboard/component/view_linechart.dart';
-import 'package:msf/core/utills/colorconfig.dart';
+import 'package:msf/core/utills/_colorconfig.dart';
 
 class Viewers extends StatelessWidget {
   const Viewers({super.key});

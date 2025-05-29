@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:msf/core/component/page_builder.dart';
-import 'package:msf/features/controllers/waf/WafRule.dart';
+import 'package:msf/features/controllers/waf/WafWebsite.dart';
 import 'package:msf/core/component/widgets/dashboard_textfield.dart';
 
-class AddNewRule extends StatelessWidget {
+class AddNewRuleWebsite extends StatelessWidget {
+  final String websiteId; // Add websiteId as a required parameter
   final TextEditingController titleController = TextEditingController();
   final TextEditingController contentController = TextEditingController();
-  final WafRuleController wafController = Get.find<WafRuleController>();
+  final WafWebsiteController controller = Get.find<WafWebsiteController>();
+
+  AddNewRuleWebsite({required this.websiteId}); // Constructor with websiteId
 
   @override
   Widget build(BuildContext context) {
@@ -70,7 +73,7 @@ class AddNewRule extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text("Content of the rule", style: Theme.of(context).textTheme.bodyLarge),
+            Text("Content of the rule".tr, style: Theme.of(context).textTheme.bodyLarge),
             const SizedBox(height: 10),
 
             Container(
@@ -99,14 +102,14 @@ class AddNewRule extends StatelessWidget {
                   String title = titleController.text.trim();
                   String content = contentController.text.trim();
                   if (title.isNotEmpty && content.isNotEmpty) {
-                    wafController.addNewRule(title, content);
-                    Get.snackbar("Success", "Rule added successfully");
+                    controller.createRule(websiteId, title, content); // Pass websiteId
+                    Get.snackbar("Success".tr, "Rule added successfully".tr);
                     Get.back();
                   } else {
-                    Get.snackbar("Error", "Please fill in both fields");
+                    Get.snackbar("Error".tr, "Please fill in both fields".tr);
                   }
                 },
-                child: const Text("Save", style: TextStyle(color: Colors.white)),
+                child:  Text("Save".tr, style: TextStyle(color: Colors.white)),
               ),
             ),
           ],

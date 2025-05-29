@@ -2,7 +2,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
-import 'package:msf/core/utills/colorconfig.dart';
+import 'package:msf/core/utills/_colorconfig.dart';
 import 'package:msf/features/controllers/log/NginxLogController.dart';
 import 'dart:math' as math;
 
@@ -27,26 +27,23 @@ class ViewLineChart extends StatelessWidget {
         var maxTraffic = spots.map((s) => s.y).reduce((a, b) => a > b ? a : b);
         var maxY = math.max(1, (maxTraffic * 1.1).ceil()).toDouble();
 
-        // Determine the number of labels based on data points
         var numLabels = dates.length <= 7 ? dates.length : 7;
         var step = numLabels > 1 ? (dates.length - 1) / (numLabels - 1) : 0;
         var indicesToShow = List.generate(numLabels, (i) => (i * step).round()).toSet();
 
-        // Calculate time span for range adjustment (in days)
         var firstDate = DateTime.parse(dates.first);
         var lastDate = DateTime.parse(dates.last);
         var daysSpan = lastDate.difference(firstDate).inDays + 1;
 
-        // Adjust x-axis range based on number of data points and span
         double rangeMaxX;
         if (dates.length < 14) {
-          rangeMaxX = math.min(13, dates.length - 1); // Up to 2 weeks
+          rangeMaxX = math.min(13, dates.length - 1); //  2 weeks
         } else if (dates.length < 30) {
-          rangeMaxX = math.min(29, dates.length - 1); // Up to 1 month
+          rangeMaxX = math.min(29, dates.length - 1); //  1 month
         } else if (dates.length < 44) {
-          rangeMaxX = math.min(43, dates.length - 1); // Up to 6 weeks
+          rangeMaxX = math.min(43, dates.length - 1); //  6 weeks
         } else if (dates.length < 60) {
-          rangeMaxX = math.min(59, dates.length - 1); // Up to 2 months
+          rangeMaxX = math.min(59, dates.length - 1); //  2 months
         } else {
           rangeMaxX = dates.length - 1; // Full range
         }

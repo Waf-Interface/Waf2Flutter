@@ -5,6 +5,7 @@ import 'package:msf/core/services/unit/api/HttpService.dart';
 
 class WebsiteController extends GetxController {
   final RxList<Website> websites = <Website>[].obs;
+  final HttpService _httpService = HttpService();
 
   @override
   void onInit() {
@@ -15,16 +16,21 @@ class WebsiteController extends GetxController {
   void addWebsite(String name, String url, String zipPath) {
     websites.add(
         Website(
-      name: name,
-      url: url,
-      author: "admin",
-      status: 'Waiting for zip',
-      initStatus: false,
-      zipPath: zipPath,
-    ));
+          name: name,
+          url: url,
+          author: "admin",
+          status: ''.obs,
+          addWebsiteStatus: 'Waiting for zip',
+          initStatus: false,
+          zipPath: zipPath,
+        ));
   }
 
   void updateStatus(Website website, String newStatus) {
+    website.addWebsiteStatus = newStatus;
+  }
+
+  void updateApiStatus(Website website, String newStatus) {
     website.status.value = newStatus;
   }
 
@@ -36,8 +42,9 @@ class WebsiteController extends GetxController {
     try {
       String fileNameWithExtension = '${website.name}.zip';
 
-      final response = await HttpService().deployFile(fileNameWithExtension);
+      final response = await _httpService.deployFile(fileNameWithExtension);
       if (response.statusCode == 200) {
+        website.addWebsiteStatus = 'Deployed';
         website.status.value = 'Deployed';
         Get.snackbar(
           "Deployment Successful",
@@ -71,16 +78,40 @@ class WebsiteController extends GetxController {
 
   Future<void> fetchWebsites() async {
     try {
-      // دریافت داده‌ها از HttpService
-      List<Website> websiteList = await HttpService().fetchAppList();
-
-      // به روز رسانی لیست websites
-      websites.assignAll(websiteList);
+      final websiteList = await _httpService.listWebsites();
+      websites.assignAll(websiteList as List<Website>);
     } catch (e) {
-      // نمایش پیام خطا
+      //   Get.snackbar(
+      //     "Error",
+      //     "Failed to fetch websites: $e",
+      //     snackPosition: SnackPosition.BOTTOM,
+      //     backgroundColor: Colors.red.withOpacity(0.7),
+      //     colorText: Colors.white,
+      //     duration: const Duration(seconds: 3),
+      //   );
+      // }
+    }
+  }
+
+  Future<void> deleteWebsite(Website website) async {
+    try {
+      if (website.id == null) {
+        throw Exception('Website ID is null');
+      }
+      await _httpService.deleteWebsite(website.id!);
+      removeWebsite(website);
+      Get.snackbar(
+        "Website Deleted",
+        "Website ${website.name} has been deleted",
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.green.withOpacity(0.7),
+        colorText: Colors.white,
+        duration: const Duration(seconds: 3),
+      );
+    } catch (e) {
       Get.snackbar(
         "Error",
-        "Failed to fetch websites: $e",
+        "Failed to delete website: $e",
         snackPosition: SnackPosition.BOTTOM,
         backgroundColor: Colors.red.withOpacity(0.7),
         colorText: Colors.white,
@@ -88,6 +119,4 @@ class WebsiteController extends GetxController {
       );
     }
   }
-
-
 }

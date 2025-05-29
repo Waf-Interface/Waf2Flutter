@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
@@ -6,6 +5,8 @@ import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:msf/core/services/unit/api/HttpService.dart';
 import 'package:file_saver/file_saver.dart';
+import 'package:msf/features/controllers/log/NginxLogController.dart';
+import 'package:msf/features/controllers/ws/WsController.dart';
 
 class WafLogController extends GetxController {
   var logs = <Map<String, dynamic>>[].obs;
@@ -15,9 +16,6 @@ class WafLogController extends GetxController {
   var filterType = "All".obs;
   var isLoading = false.obs;
   var modStatus = false.obs;
-  Timer? timer;
-
-  HttpService httpService = HttpService();
 
   var warningsCount = 0.obs;
   var criticalCount = 0.obs;
@@ -25,12 +23,101 @@ class WafLogController extends GetxController {
   var allCount = 0.obs;
   var lastRefresh = ''.obs;
 
+  final HttpService httpService = HttpService();
+  late final WsController wsController;
+  final NginxLogController nginxLogController = NginxLogController();
+
   @override
   void onInit() {
-    fetchLogs();
-    updateStatus();
-    timer = Timer.periodic(const Duration(seconds: 60), (_) => updateStatus());
+    wsController = Get.find<WsController>();
+    _syncWithWebSocket();
+    fetchInitialLogs(); // Initial HTTP fetch as fallback
     super.onInit();
+  }
+
+  void _syncWithWebSocket() {
+    ever(wsController.auditLogs, (List<Map<String, dynamic>> auditLogs) {
+      _processLogUpdate(auditLogs);
+    });
+
+    ever(wsController.isConnected, (bool connected) {
+      if (!connected) {
+        isLoading.value = true;
+      } else {
+        isLoading.value = false;
+        wsController.fetchAuditLogs();
+        wsController.requestModSecurityStatus(); // Request status when reconnected
+      }
+    });
+
+    ever(wsController.modSecurityStatus, (bool status) {
+      modStatus.value = status;
+      print("ModSecurity status synced: $status");
+    });
+
+    // Initial request
+    if (wsController.isConnected.value) {
+      wsController.fetchAuditLogs();
+      wsController.requestModSecurityStatus();
+    }
+  }
+
+  void fetchInitialLogs() async {
+    isLoading.value = true;
+    try {
+      dynamic response = await httpService.fetchWafLogs();
+      _processLogResponse(response);
+    } catch (e) {
+      print("Error fetching initial logs: $e");
+      logs.value = [];
+      filteredLogs.value = [];
+    }
+    isLoading.value = false;
+  }
+
+  void _processLogUpdate(List<Map<String, dynamic>> logData) {
+    logs.value = logData.map<Map<String, dynamic>>((logEntry) {
+      String summary = (logEntry['timestamp'] != null && logEntry['client_ip'] != null)
+          ? '${logEntry['timestamp']} - ${logEntry['client_ip']}'
+          : 'Log Entry';
+      return {
+        'summary': summary,
+        'full': logEntry,
+      };
+    }).toList();
+
+    _sortAndIndexLogs();
+    _updateCounts();
+    applyFilter();
+    lastRefresh.value = DateFormat('HH:mm:ss').format(DateTime.now());
+  }
+
+  void _processLogResponse(dynamic response) {
+    List<dynamic> logData;
+    if (response is String) {
+      var decoded = jsonDecode(response);
+      logData = (decoded is Map && decoded.containsKey("logs")) ? decoded["logs"] : decoded is List ? decoded : [];
+    } else if (response is Map<String, dynamic>) {
+      logData = response["logs"] ?? [];
+    } else if (response is List) {
+      logData = response;
+    } else {
+      logData = [];
+    }
+
+    _processLogUpdate(logData.cast<Map<String, dynamic>>());
+  }
+
+  void _sortAndIndexLogs() {
+    logs.sort((a, b) {
+      DateTime dateA = DateTime.tryParse(a['full']['timestamp'] ?? '') ?? DateTime(1970);
+      DateTime dateB = DateTime.tryParse(b['full']['timestamp'] ?? '') ?? DateTime(1970);
+      return dateB.compareTo(dateA);
+    });
+
+    for (int i = 0; i < logs.length; i++) {
+      logs[i]['#'] = (i + 1).toString();
+    }
   }
 
   bool logMatches(Map fullLog, String search) {
@@ -45,74 +132,6 @@ class WafLogController extends GetxController {
     return false;
   }
 
-  void fetchLogs() async {
-    isLoading.value = true;
-
-    try {
-      dynamic response = await httpService.fetchWafLogs();
-      print("Raw response type: ${response.runtimeType}");
-      print("Raw response content: $response");
-
-      List<dynamic> logData;
-      if (response is String) {
-        var decoded = jsonDecode(response);
-        if (decoded is Map<String, dynamic> && decoded.containsKey("logs")) {
-          logData = decoded["logs"] ?? [];
-          print("Decoded Map, logs length: ${logData.length}");
-        } else if (decoded is List) {
-          logData = decoded;
-          print("Decoded List, length: ${logData.length}");
-        } else {
-          logData = [];
-          print("Decoded unexpected type: ${decoded.runtimeType}");
-        }
-      } else if (response is Map<String, dynamic>) {
-        logData = response["logs"] ?? [];
-        print("Response is Map, logs length: ${logData.length}");
-      } else if (response is List) {
-        logData = response;
-        print("Response is List, length: ${logData.length}");
-      } else {
-        logData = [];
-        print("Unexpected response type: ${response.runtimeType}");
-      }
-
-      print("Number of log entries: ${logData.length}");
-
-      logs.value = logData.map<Map<String, dynamic>>((logEntry) {
-        String summary = (logEntry['timestamp'] != null && logEntry['client_ip'] != null)
-            ? '${logEntry['timestamp']} - ${logEntry['client_ip']}'
-            : 'Log Entry';
-        return {
-          'summary': summary,
-          'full': logEntry,
-        };
-      }).toList();
-
-      print("Mapped logs count: ${logs.length}");
-
-      logs.sort((a, b) {
-        DateTime dateA = DateTime.tryParse(a['full']['timestamp'] ?? '') ?? DateTime(1970);
-        DateTime dateB = DateTime.tryParse(b['full']['timestamp'] ?? '') ?? DateTime(1970);
-        return dateB.compareTo(dateA);
-      });
-
-      for (int i = 0; i < logs.length; i++) {
-        logs[i]['#'] = (i + 1).toString();
-      }
-
-      _updateCounts();
-      applyFilter();
-    } catch (e) {
-      print("Error fetching logs: $e");
-      logs.value = [];
-      filteredLogs.value = [];
-    }
-
-    lastRefresh.value = DateFormat('HH:mm:ss').format(DateTime.now());
-    isLoading.value = false;
-  }
-
   void clearLogs() async {
     isLoading.value = true;
     try {
@@ -120,13 +139,14 @@ class WafLogController extends GetxController {
       if (success) {
         logs.clear();
         filteredLogs.clear();
-        Get.snackbar("Success", "All logs cleared successfully", snackPosition: SnackPosition.BOTTOM);
+        wsController.auditLogs.clear();
+        Get.snackbar("Success", "All logs cleared successfully");
       } else {
-        Get.snackbar("Error", "Failed to clear logs", snackPosition: SnackPosition.BOTTOM);
+        Get.snackbar("Error", "Failed to clear logs");
       }
     } catch (e) {
       print("Error clearing logs: $e");
-      Get.snackbar("Error", "An error occurred while clearing logs", snackPosition: SnackPosition.BOTTOM);
+      Get.snackbar("Error", "An error occurred while clearing logs");
     }
     isLoading.value = false;
   }
@@ -172,7 +192,7 @@ class WafLogController extends GetxController {
     Map<String, int> ruleCounts = {};
     for (var log in logs) {
       var fullLog = log['full'];
-      if (fullLog != null && fullLog.containsKey('alerts')) {
+      if (fullLog.containsKey('alerts')) {
         for (var alert in fullLog['alerts']) {
           String ruleId = alert['id']?.toString() ?? 'Unknown';
           ruleCounts[ruleId] = (ruleCounts[ruleId] ?? 0) + 1;
@@ -229,21 +249,34 @@ class WafLogController extends GetxController {
       customMimeType: "application/json",
     );
   }
-
+  void fetchLogs() async {
+    isLoading.value = true;
+    try {
+      dynamic response = await httpService.fetchWafLogs();
+      _processLogResponse(response);
+    } catch (e) {
+      print("Error fetching initial logs: $e");
+      logs.value = [];
+      filteredLogs.value = [];
+    }
+    isLoading.value = false;
+  }
   void refreshLogs() {
-    logs.clear();
-    filteredLogs.clear();
+    wsController.fetchAuditLogs();
+    nginxLogController.dailyTraffic();
+  }
+  void refreshLogsForce() {
     fetchLogs();
+    nginxLogController.fetchDailyTraffic();
+    nginxLogController.refreshLogs();
   }
 
-  void updateStatus() async {
-    bool status = await httpService.checkModSecurityStatus();
-    modStatus.value = status;
+  void updateStatus() {
+    wsController.requestModSecurityStatus();
   }
 
   @override
   void onClose() {
-    timer?.cancel();
     super.onClose();
   }
 }

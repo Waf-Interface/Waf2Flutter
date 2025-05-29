@@ -1,20 +1,22 @@
 import 'dart:convert';
+import 'dart:ui'; // برای BackdropFilter
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:msf/core/component/page_builder.dart';
 import 'package:msf/core/component/widgets/custom_dropdown.dart';
 import 'package:msf/core/component/widgets/custom_iconbutton.dart';
 import 'package:msf/core/component/widgets/dashboard_textfield.dart';
-import 'package:msf/core/utills/colorconfig.dart';
+import 'package:msf/core/utills/ColorConfig.dart';
 import 'package:msf/features/controllers/log/NginxLogController.dart';
+import 'package:msf/features/controllers/settings/ThemeController.dart';
 
 class NginxLogScreen extends StatelessWidget {
   final NginxLogController controller = Get.put(NginxLogController());
   final TextEditingController searchController = TextEditingController();
 
   BoxDecoration getLogDecoration(Map<String, dynamic> log, BuildContext context) {
-    if (log.containsKey('modsecurity_warnings') && (log['modsecurity_warnings'] as List).isNotEmpty) {
-      List warnings = log['modsecurity_warnings'];
+    if (log.containsKey('modsecurity_warnings'.tr) && (log['modsecurity_warnings'.tr] as List).isNotEmpty) {
+      List warnings = log['modsecurity_warnings'.tr];
       bool isCritical = warnings.any((w) {
         String msg = w['message']?.toString().toLowerCase() ?? '';
         return msg.contains('sqli') || msg.contains('anomaly');
@@ -73,7 +75,7 @@ class NginxLogScreen extends StatelessWidget {
             title: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text("Log Details"),
+                 Text("Log Details".tr),
                 IconButton(
                   icon: const Icon(Icons.code),
                   onPressed: () {
@@ -95,7 +97,7 @@ class NginxLogScreen extends StatelessWidget {
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),
-                child: const Text("Close"),
+                child:  Text("Close".tr),
               )
             ],
           );
@@ -116,7 +118,7 @@ class NginxLogScreen extends StatelessWidget {
         return StatefulBuilder(
           builder: (context, setState) {
             return AlertDialog(
-              title: const Text("Filter Options"),
+              title:  Text("Filter Options".tr),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -163,11 +165,11 @@ class NginxLogScreen extends StatelessWidget {
                     controller.applyFilter();
                     Get.back();
                   },
-                  child: const Text("Apply"),
+                  child:  Text("Apply".tr),
                 ),
                 TextButton(
                   onPressed: () => Get.back(),
-                  child: const Text("Close"),
+                  child:  Text("Close".tr),
                 ),
               ],
             );
@@ -179,197 +181,214 @@ class NginxLogScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ThemeController themeController = Get.find<ThemeController>();
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     return PageBuilder(
       sectionWidgets: [
-        // Wrap the entire container in a SingleChildScrollView to allow vertical scrolling
         SingleChildScrollView(
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.onSecondary,
+          child: Obx(() {
+            final isCinematic = themeController.isCinematic.value;
+            return ClipRRect(
               borderRadius: BorderRadius.circular(10),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Header and download row
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text("Nginx Logs"),
-                        Obx(() => Text("Showing last ${controller.filteredLogs.length} logs")),
-                      ],
+              child: BackdropFilter(
+                filter: isCinematic
+                    ? ImageFilter.blur(sigmaX: 10, sigmaY: 10)
+                    : ImageFilter.blur(sigmaX: 0, sigmaY: 0),
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: isCinematic
+                      ? BoxDecoration(
+                    color: ColorConfig.glassColor,
+                    border: Border.all(
+                      color: isDarkMode
+                          ? Colors.white.withOpacity(0.01)
+                          : Colors.black.withOpacity(0.0),
                     ),
-                    CustomIconbuttonWidget(
-                      backColor: primaryColor,
-                      onPressed: controller.downloadLogs,
-                      title: "Download Full Log",
-                      icon: Icons.download,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                // Filter controls row
-                Row(
-                  children: [
-                    const Text("Show"),
-                    const SizedBox(width: 5),
-                    Obx(
-                          () => CustomDropdownWidget(
-                        list: [5, 10, 25, 50, 100],
-                        value: controller.selectedEntries.value,
-                        onchangeValue: (newVal) {
-                          int value = int.tryParse(newVal.toString()) ?? 10;
-                          controller.selectedEntries.value = value;
-                          controller.applyFilter();
-                        },
+                    borderRadius: BorderRadius.circular(10),
+                  )
+                      : BoxDecoration(
+                    color: Theme.of(context).colorScheme.onSecondary,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                               Text("Nginx Logs".tr),
+                              Obx(() => Text("Showing last ${controller.filteredLogs.length} logs")),
+                            ],
+                          ),
+                          CustomIconbuttonWidget(
+                            backColor: ColorConfig.primaryColor,
+                            onPressed: controller.downloadLogs,
+                            title: "Download Full Log".tr,
+                            icon: Icons.download,
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: SizedBox(
-                        width: 200,
-                        child: DashboardTextfield(
-                          textEditingController: searchController,
-                          onChanged: (val) {
-                            controller.searchText.value = val;
-                            controller.applyFilter();
-                          },
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    ElevatedButton(
-                      onPressed: () => showFilterOptions(context),
-                      child: const Text(
-                        "Filter",
-                        style: TextStyle(color: Colors.white),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    IconButton(
-                      icon: const Icon(Icons.refresh),
-                      onPressed: controller.refreshLogs,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                // DataTable (without any fixed height constraints)
-                Obx(() {
-                  if (controller.isLoading.value) {
-                    return const Center(child: CircularProgressIndicator());
-                  } else {
-                    return SingleChildScrollView(
-                      // Horizontal scrolling for the table if needed
-                      scrollDirection: Axis.horizontal,
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(
-                          // Ensure the table takes at least the full available width
-                          minWidth: MediaQuery.of(context).size.width - 32,
-                        ),
-                        child: DataTable(
-                          columnSpacing: 0,
-                          horizontalMargin: 0,
-                          columns: const [
-                            DataColumn(label: Expanded(child: Text("#", textAlign: TextAlign.center))),
-                            DataColumn(label: Expanded(child: Text("Timestamp", textAlign: TextAlign.center))),
-                            DataColumn(label: Expanded(child: Text("IP Address", textAlign: TextAlign.center))),
-                            DataColumn(label: Expanded(child: Text("Request", textAlign: TextAlign.center))),
-                            DataColumn(label: Expanded(child: Text("Status", textAlign: TextAlign.center))),
-                            DataColumn(label: Expanded(child: Text("Bytes", textAlign: TextAlign.center))),
-                            DataColumn(label: Expanded(child: Text("Referrer", textAlign: TextAlign.center))),
-                            DataColumn(label: Expanded(child: Text("User-Agent", textAlign: TextAlign.center))),
-                            DataColumn(label: Expanded(child: Text("Summary", textAlign: TextAlign.center))),
-                          ],
-                          rows: controller.filteredLogs.map((log) {
-                            BoxDecoration deco = getLogDecoration(log, context);
-                            return DataRow(
-                              onSelectChanged: (selected) {
-                                if (selected ?? false) {
-                                  showLogDetails(context, log);
-                                }
+                      const SizedBox(height: 20),
+                      Row(
+                        children: [
+                           Text("Show".tr),
+                          const SizedBox(width: 5),
+                          Obx(
+                                () => CustomDropdownWidget(
+                              list: [5, 10, 25, 50, 100],
+                              value: controller.selectedEntries.value,
+                              onchangeValue: (newVal) {
+                                int value = int.tryParse(newVal.toString()) ?? 10;
+                                controller.selectedEntries.value = value;
+                                controller.applyFilter();
                               },
-                              cells: [
-                                DataCell(
-                                  Container(
-                                    padding: const EdgeInsets.all(8),
-                                    decoration: deco,
-                                    child: Center(child: Text(log['#'].toString())),
-                                  ),
-                                ),
-                                DataCell(
-                                  Container(
-                                    padding: const EdgeInsets.all(8),
-                                    decoration: deco,
-                                    child: Center(child: Text(log['timestamp'] ?? 'N/A')),
-                                  ),
-                                ),
-                                DataCell(
-                                  Container(
-                                    padding: const EdgeInsets.all(8),
-                                    decoration: deco,
-                                    child: Center(child: Text(log['ip'] ?? 'N/A')),
-                                  ),
-                                ),
-                                DataCell(
-                                  Container(
-                                    padding: const EdgeInsets.all(8),
-                                    decoration: deco,
-                                    child: Center(child: Text(log['request'] ?? 'N/A')),
-                                  ),
-                                ),
-                                DataCell(
-                                  Container(
-                                    padding: const EdgeInsets.all(8),
-                                    decoration: deco,
-                                    child: Center(child: Text(log['status'] ?? 'N/A')),
-                                  ),
-                                ),
-                                DataCell(
-                                  Container(
-                                    padding: const EdgeInsets.all(8),
-                                    decoration: deco,
-                                    child: Center(child: Text(log['bytes'] ?? 'N/A')),
-                                  ),
-                                ),
-                                DataCell(
-                                  Container(
-                                    padding: const EdgeInsets.all(8),
-                                    decoration: deco,
-                                    child: Center(child: Text(log['referrer'] ?? 'N/A')),
-                                  ),
-                                ),
-                                DataCell(
-                                  Container(
-                                    padding: const EdgeInsets.all(8),
-                                    decoration: deco,
-                                    child: Center(child: Text(log['user_agent'] ?? 'N/A')),
-                                  ),
-                                ),
-                                DataCell(
-                                  Container(
-                                    padding: const EdgeInsets.all(8),
-                                    decoration: deco,
-                                    child: Center(child: Text(log['summary'] ?? 'N/A')),
-                                  ),
-                                ),
-                              ],
-                            );
-                          }).toList(),
-                        ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: SizedBox(
+                              width: 200,
+                              child: DashboardTextfield(
+                                textEditingController: searchController,
+                                onChanged: (val) {
+                                  controller.searchText.value = val;
+                                  controller.applyFilter();
+                                },
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          ElevatedButton(
+                            onPressed: () => showFilterOptions(context),
+                            child:  Text(
+                              "Filter".tr,
+                              style: TextStyle(color: Colors.white),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          IconButton(
+                            icon: const Icon(Icons.refresh),
+                            onPressed: controller.refreshLogs,
+                          ),
+                        ],
                       ),
-                    );
-                  }
-                }),
-              ],
-            ),
-          ),
+                      const SizedBox(height: 20),
+                      Obx(() {
+                        if (controller.isLoading.value) {
+                          return const Center(child: CircularProgressIndicator());
+                        } else {
+                          return SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: ConstrainedBox(
+                              constraints: BoxConstraints(
+                                minWidth: MediaQuery.of(context).size.width - 32,
+                              ),
+                              child: DataTable(
+                                columnSpacing: 0,
+                                horizontalMargin: 0,
+                                columns:  [
+                                  DataColumn(label: Expanded(child: Text("#", textAlign: TextAlign.center))),
+                                  DataColumn(label: Expanded(child: Text("Timestamp".tr, textAlign: TextAlign.center))),
+                                  DataColumn(label: Expanded(child: Text("IP Address".tr, textAlign: TextAlign.center))),
+                                  DataColumn(label: Expanded(child: Text("Request".tr, textAlign: TextAlign.center))),
+                                  DataColumn(label: Expanded(child: Text("Status".tr, textAlign: TextAlign.center))),
+                                  DataColumn(label: Expanded(child: Text("Bytes".tr, textAlign: TextAlign.center))),
+                                  DataColumn(label: Expanded(child: Text("Referrer".tr, textAlign: TextAlign.center))),
+                                  DataColumn(label: Expanded(child: Text("User-Agent".tr, textAlign: TextAlign.center))),
+                                  DataColumn(label: Expanded(child: Text("Summary".tr, textAlign: TextAlign.center))),
+                                ],
+                                rows: controller.filteredLogs.map((log) {
+                                  BoxDecoration deco = getLogDecoration(log, context);
+                                  return DataRow(
+                                    onSelectChanged: (selected) {
+                                      if (selected ?? false) {
+                                        showLogDetails(context, log);
+                                      }
+                                    },
+                                    cells: [
+                                      DataCell(
+                                        Container(
+                                          padding: const EdgeInsets.all(8),
+                                          decoration: deco,
+                                          child: Center(child: Text(log['#'].toString())),
+                                        ),
+                                      ),
+                                      DataCell(
+                                        Container(
+                                          padding: const EdgeInsets.all(8),
+                                          decoration: deco,
+                                          child: Center(child: Text(log['timestamp'] ?? 'N/A')),
+                                        ),
+                                      ),
+                                      DataCell(
+                                        Container(
+                                          padding: const EdgeInsets.all(8),
+                                          decoration: deco,
+                                          child: Center(child: Text(log['ip'] ?? 'N/A')),
+                                        ),
+                                      ),
+                                      DataCell(
+                                        Container(
+                                          padding: const EdgeInsets.all(8),
+                                          decoration: deco,
+                                          child: Center(child: Text(log['request'] ?? 'N/A')),
+                                        ),
+                                      ),
+                                      DataCell(
+                                        Container(
+                                          padding: const EdgeInsets.all(8),
+                                          decoration: deco,
+                                          child: Center(child: Text(log['status'] ?? 'N/A')),
+                                        ),
+                                      ),
+                                      DataCell(
+                                        Container(
+                                          padding: const EdgeInsets.all(8),
+                                          decoration: deco,
+                                          child: Center(child: Text(log['bytes'] ?? 'N/A')),
+                                        ),
+                                      ),
+                                      DataCell(
+                                        Container(
+                                          padding: const EdgeInsets.all(8),
+                                          decoration: deco,
+                                          child: Center(child: Text(log['referrer'] ?? 'N/A')),
+                                        ),
+                                      ),
+                                      DataCell(
+                                        Container(
+                                          padding: const EdgeInsets.all(8),
+                                          decoration: deco,
+                                          child: Center(child: Text(log['user_agent'] ?? 'N/A')),
+                                        ),
+                                      ),
+                                      DataCell(
+                                        Container(
+                                          padding: const EdgeInsets.all(8),
+                                          decoration: deco,
+                                          child: Center(child: Text(log['summary'] ?? 'N/A')),
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                                }).toList(),
+                              ),
+                            ),
+                          );
+                        }
+                      }),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }),
         ),
       ],
     );
-
   }
 }

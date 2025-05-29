@@ -28,7 +28,6 @@ class UserController extends GetxController {
     } catch (e) {
       errorMessage.value = e.toString();
       print(e);
-      Get.snackbar('Error', errorMessage.value);
     } finally {
       isLoading.value = false;
     }
@@ -43,7 +42,6 @@ class UserController extends GetxController {
     } catch (e) {
       errorMessage.value = e.toString();
       print(e);
-      Get.snackbar('Error', errorMessage.value);
     } finally {
       isLoading.value = false;
     }

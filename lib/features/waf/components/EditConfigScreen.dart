@@ -17,7 +17,7 @@ class _EditConfigScreenState extends State<EditConfigScreen> {
   late final TextEditingController titleController;
   late final TextEditingController contentController;
   late final WafSetupController wafController;
-  SnackbarController? _snackbarController; // Store the snackbar controller
+  SnackbarController? _snackbarController;
 
   @override
   void initState() {
@@ -38,7 +38,6 @@ class _EditConfigScreenState extends State<EditConfigScreen> {
 
   @override
   void dispose() {
-    // Close any active snackbar before disposing
     _snackbarController?.close();
     titleController.dispose();
     contentController.dispose();
@@ -61,7 +60,6 @@ class _EditConfigScreenState extends State<EditConfigScreen> {
                 children: [
                   IconButton(
                     onPressed: () {
-                      // Close any active snackbar before navigating back
                       _snackbarController?.close();
                       Get.back();
                     },
@@ -126,9 +124,9 @@ class _EditConfigScreenState extends State<EditConfigScreen> {
                             maxLines: null,
                             keyboardType: TextInputType.multiline,
                             textAlignVertical: TextAlignVertical.top,
-                            decoration: const InputDecoration(
+                            decoration:  InputDecoration(
                               border: InputBorder.none,
-                              hintText: "Enter your configuration here...",
+                              hintText: "Enter your configuration here...".tr,
                               hintStyle: TextStyle(color: Colors.grey),
                             ),
                             style: const TextStyle(
@@ -152,7 +150,7 @@ class _EditConfigScreenState extends State<EditConfigScreen> {
                               bool success = await wafController
                                   .restoreConfigFile(widget.fileKey);
                               _snackbarController = Get.snackbar(
-                                "Success",
+                                "Success".tr,
                                 "${widget.fileKey} restored successfully",
                                 duration: const Duration(seconds: 2),
                               );
@@ -197,7 +195,6 @@ class _EditConfigScreenState extends State<EditConfigScreen> {
                                     "${widget.fileKey} updated successfully",
                                     duration: const Duration(seconds: 2),
                                   );
-                                  // Wait for the snackbar to finish before navigating back
                                   await Future.delayed(
                                       const Duration(seconds: 2));
                                   _snackbarController?.close();

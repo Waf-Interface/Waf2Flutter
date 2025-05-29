@@ -19,8 +19,7 @@ class _StatisticScreenState extends State<StatisticScreen>
   final String title = Get.arguments ?? "";
   int _selectedTabIndex = 0;
 
-  //this is should be complitly show the sites
-  List<String> dropData = ["www.climbersoul.cl", "site1", "site2"];
+//  List<String> dropData = ["www.climbersoul.cl", "site1", "site2"];
   @override
   void initState() {
     _tabController = TabController(length: 9, vsync: this);
@@ -42,45 +41,9 @@ class _StatisticScreenState extends State<StatisticScreen>
 
   @override
   Widget build(BuildContext context) {
-    return PageBuilder(
+    return  PageBuilder(
         sectionWidgets: [
-          Container(
-            width: double.infinity,
-            margin: const EdgeInsets.only(bottom: 5),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Theme
-                  .of(context)
-                  .colorScheme
-                  .onSecondary,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Row(
-              children: [
-                // CustomIconbuttonWidget(
-                //   backColor: Colors.transparent,
-                //   onPressed: () => Get.back(),
-                //   icon: Icons.arrow_back,
-                // ),
-                const SizedBox(width: 5),
-                title != "" ? Text(title) : const SizedBox.shrink(),
-                const SizedBox(width: 15),
-                DropdownButton<String>(
-                  value: "www.climbersoul.cl",
-                  onChanged: (String? value) {},
-                  items: dropData
-                      .map<DropdownMenuItem<String>>(
-                          (String value) =>
-                          DropdownMenuItem<String>(
-                            value: value,
-                            child: Text(value),
-                          ))
-                      .toList(),
-                  underline: const SizedBox(),
-                ),
-              ],
-            ),
-          ),
+         Text("This page is currently at developments".tr),
         ]);
   }
 }

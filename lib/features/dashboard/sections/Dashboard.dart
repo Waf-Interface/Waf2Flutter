@@ -50,13 +50,13 @@ class Dashboard extends StatelessWidget {
                   Responsive(
                     mobile: Padding(
                       padding: const EdgeInsets.only(top: 16),
-                      child: Viewers(),  // Changed from AttacksPerApplicationTable
+                      child: Viewers(),
                     ),
-                    tablet: Viewers(),    // Changed from AttacksPerApplicationTable
-                    desktop: Viewers(),   // Changed from AttacksPerApplicationTable
+                    tablet: Viewers(),
+                    desktop: Viewers(),
                   ),
                   if (Responsive.isMobile(context))
-                    const Padding(
+                     Padding(
                       padding: EdgeInsets.only(top: 5),
                       child: StatusSection(),
                     ),
@@ -70,7 +70,7 @@ class Dashboard extends StatelessWidget {
               width: 16,
             ),
             if (!Responsive.isMobile(context))
-              const Expanded(
+               Expanded(
                 flex: 2,
                 child: StatusSection(),
               ),

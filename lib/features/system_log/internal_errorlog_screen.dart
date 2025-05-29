@@ -1,11 +1,13 @@
+import 'dart:ui'; // برای BackdropFilter
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:msf/core/component/page_builder.dart';
 import 'package:msf/core/component/widgets/custom_dropdown.dart';
 import 'package:msf/core/component/widgets/custom_iconbutton.dart';
 import 'package:msf/core/component/widgets/dashboard_textfield.dart';
-import 'package:msf/core/utills/colorconfig.dart';
+import 'package:msf/core/utills/ColorConfig.dart';
 import 'package:msf/features/controllers/log/LogContorller.dart';
+import 'package:msf/features/controllers/settings/ThemeController.dart';
 
 class InternalErrorLogScreen extends StatelessWidget {
   final LogController controller = Get.find<LogController>();
@@ -21,6 +23,7 @@ class InternalErrorLogScreen extends StatelessWidget {
         return Colors.blueGrey;
     }
   }
+
   void showFilterDialog(BuildContext context) {
     List<String> logLevels = controller.filteredAppLogs
         .map((log) => log['level'].toString().toUpperCase().trim())
@@ -28,49 +31,45 @@ class InternalErrorLogScreen extends StatelessWidget {
         .toList();
 
     logLevels.sort();
-    logLevels.insert(0, "All");
+    logLevels.insert(0, "All".tr);
 
     Get.defaultDialog(
-      title: "Select Filter",
+      title: "Select Filter".tr,
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Obx(
-                () {
-              if (!logLevels.contains(controller.filterType.value)) {
-                controller.filterType.value = logLevels.first;
-              }
+          Obx(() {
+            if (!logLevels.contains(controller.filterType.value)) {
+              controller.filterType.value = logLevels.first;
+            }
 
-              return DropdownButton<String>(
-                value: controller.filterType.value,
-                onChanged: (String? newValue) {
-                  if (newValue != null) {
-                    controller.filterType.value = newValue;
-                  }
-                },
-                items: logLevels.map((filter) {
-                  return DropdownMenuItem(
-                    value: filter,
-                    child: Text(filter),
-                  );
-                }).toList(),
-              );
-            },
-          ),
-
+            return DropdownButton<String>(
+              value: controller.filterType.value,
+              onChanged: (String? newValue) {
+                if (newValue != null) {
+                  controller.filterType.value = newValue;
+                }
+              },
+              items: logLevels.map((filter) {
+                return DropdownMenuItem(
+                  value: filter,
+                  child: Text(filter),
+                );
+              }).toList(),
+            );
+          }),
           const SizedBox(height: 10),
           ElevatedButton(
             onPressed: () {
               controller.applyAppLogFilter(searchController.text);
               Get.back(); // Close the dialog
             },
-            child: const Text("Apply"),
+            child:  Text("Apply".tr),
           ),
         ],
       ),
     );
   }
-
 
   Widget buildLogLevelBadge(String? level) {
     return Container(
@@ -95,7 +94,7 @@ class InternalErrorLogScreen extends StatelessWidget {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text("Log Details"),
+          title:  Text("Log Details".tr),
           content: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
@@ -110,7 +109,7 @@ class InternalErrorLogScreen extends StatelessWidget {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text("Close"),
+              child:  Text("Close".tr),
             ),
           ],
         );
@@ -120,124 +119,150 @@ class InternalErrorLogScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ThemeController themeController = Get.find<ThemeController>();
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     return PageBuilder(
       sectionWidgets: [
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.onSecondary,
+        Obx(() {
+          final isCinematic = themeController.isCinematic.value;
+          return ClipRRect(
             borderRadius: BorderRadius.circular(10),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text("Internal Error Logs"),
-                      Obx(() => Text("Showing last ${controller.filteredAppLogs.length} logs")),
-                    ],
+            child: BackdropFilter(
+              filter: isCinematic
+                  ? ImageFilter.blur(sigmaX: 10, sigmaY: 10)
+                  : ImageFilter.blur(sigmaX: 0, sigmaY: 0),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: isCinematic
+                    ? BoxDecoration(
+                  color: ColorConfig.glassColor,
+                  border: Border.all(
+                    color: isDarkMode
+                        ? Colors.white.withOpacity(0.01)
+                        : Colors.black.withOpacity(0.0),
                   ),
-                  CustomIconbuttonWidget(
-                    backColor: primaryColor,
-                    onPressed: () => controller.downloadLogs(controller.filteredAppLogs),
-                    title: "Download Full Log",
-                    icon: Icons.download,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  const Text("Show"),
-                  const SizedBox(width: 5),
-                  Obx(
-                        () => CustomDropdownWidget(
-                      list: [5, 10, 25, 50, 100],
-                      value: controller.selectedEntries.value,
-                      onchangeValue: (newVal) {
-                        int value = int.tryParse(newVal.toString()) ?? 10;
-                        controller.selectedEntries.value = value;
-                        controller.applyAppLogFilter(searchController.text);
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: SizedBox(
-                      width: 200,
-                      child: DashboardTextfield(
-                        textEditingController: searchController,
-                        onChanged: (val) {
-                          controller.applyAppLogFilter(val);
-                        },
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  ElevatedButton(
-                    onPressed: () {
-                      showFilterDialog(context);
-                    },
-                    child: const Text("Filter", style: TextStyle(color: Colors.white)),
-                  ),
-
-
-                  const SizedBox(width: 10),
-                  IconButton(
-                    icon: const Icon(Icons.refresh),
-                    onPressed: controller.refreshLogs,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              Obx(() {
-                if (controller.isLoading.value) {
-                  return const Center(child: CircularProgressIndicator());
-                } else {
-                  return DataTable(
-                    columns: const [
-                      DataColumn(label: Text("#")),
-                      DataColumn(label: Text("Timestamp")),
-                      DataColumn(label: Text("Level")),
-                      DataColumn(label: Text("Message")),
-                    ],
-                    rows: List<DataRow>.generate(
-                      controller.filteredAppLogs.reversed.length, // Newest logs on top
-                          (index) {
-                        final log = controller.filteredAppLogs.reversed.toList()[index];
-                        return DataRow(
-                          onSelectChanged: (selected) {
-                            if (selected ?? false) {
-                              showLogDetails(context, log);
-                            }
-                          },
-                          cells: [
-                            DataCell(Text((index + 1).toString())),
-                            DataCell(Text(log["timestamp"] ?? 'N/A')),
-                            DataCell(buildLogLevelBadge(log["level"])),
-                            DataCell(
-                              SizedBox(
-                                width: 200,
-                                child: Text(
-                                  log["message"] ?? 'No Message',
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ),
+                  borderRadius: BorderRadius.circular(10),
+                )
+                    : BoxDecoration(
+                  color: Theme.of(context).colorScheme.onSecondary,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                             Text("Internal Error Logs".tr),
+                            Obx(() => Text(
+                                "Showing last ${controller.filteredAppLogs.length} logs")),
                           ],
-                        );
-                      },
+                        ),
+                        CustomIconbuttonWidget(
+                          backColor: ColorConfig.primaryColor,
+                          onPressed: () =>
+                              controller.downloadLogs(controller.filteredAppLogs),
+                          title: "Download Full Log".tr,
+                          icon: Icons.download,
+                        ),
+                      ],
                     ),
-                  );
-                }
-              })
-            ],
-          ),
-        ),
+                    const SizedBox(height: 20),
+                    Row(
+                      children: [
+                         Text("Show".tr),
+                        const SizedBox(width: 5),
+                        Obx(
+                              () => CustomDropdownWidget(
+                            list: [5, 10, 25, 50, 100],
+                            value: controller.selectedEntries.value,
+                            onchangeValue: (newVal) {
+                              int value = int.tryParse(newVal.toString()) ?? 10;
+                              controller.selectedEntries.value = value;
+                              controller.applyAppLogFilter(searchController.text);
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: SizedBox(
+                            width: 200,
+                            child: DashboardTextfield(
+                              textEditingController: searchController,
+                              onChanged: (val) {
+                                controller.applyAppLogFilter(val);
+                              },
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        ElevatedButton(
+                          onPressed: () {
+                            showFilterDialog(context);
+                          },
+                          child:  Text("Filter".tr,
+                              style: TextStyle(color: Colors.white)),
+                        ),
+                        const SizedBox(width: 10),
+                        IconButton(
+                          icon: const Icon(Icons.refresh),
+                          onPressed: controller.refreshLogs,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    Obx(() {
+                      if (controller.isLoading.value) {
+                        return const Center(child: CircularProgressIndicator());
+                      } else {
+                        return DataTable(
+                          columns:  [
+                            DataColumn(label: Text("#")),
+                            DataColumn(label: Text("Timestamp".tr)),
+                            DataColumn(label: Text("Level".tr)),
+                            DataColumn(label: Text("Message".tr)),
+                          ],
+                          rows: List<DataRow>.generate(
+                            controller.filteredAppLogs.reversed.length,
+                                (index) {
+                              final log =
+                              controller.filteredAppLogs.reversed.toList()[index];
+                              return DataRow(
+                                onSelectChanged: (selected) {
+                                  if (selected ?? false) {
+                                    showLogDetails(context, log);
+                                  }
+                                },
+                                cells: [
+                                  DataCell(Text((index + 1).toString())),
+                                  DataCell(Text(log["timestamp"] ?? 'N/A')),
+                                  DataCell(buildLogLevelBadge(log["level"])),
+                                  DataCell(
+                                    SizedBox(
+                                      width: 200,
+                                      child: Text(
+                                        log["message"] ?? 'No Message'.tr,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
+                        );
+                      }
+                    }),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }),
       ],
     );
   }
