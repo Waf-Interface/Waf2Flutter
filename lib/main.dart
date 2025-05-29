@@ -38,7 +38,7 @@ class MyApp extends StatelessWidget {
             print('User route: ${Get.currentRoute}');
           })
         ],
-        initialRoute: AppRouter.loginRoute,
+        initialRoute: AppRouter.homeRoute,
         title: 'ModSec Admin Panel'.tr,
         theme: getTheme(isDark),
       );
